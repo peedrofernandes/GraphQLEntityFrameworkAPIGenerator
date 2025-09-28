@@ -1,0 +1,354 @@
+
+using GraphQL.Types;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using WP.Cooking.GESE.WebAPI.Models;
+using GraphQL.DataLoader;
+using WP.Cooking.GESE.WebAPI.Repositories; 
+
+
+namespace WP.Cooking.GESE.WebAPI.GraphQL.Types
+{
+    public partial class MultiSequencePilotTypeGraphType : ObjectGraphType<MultiSequencePilotType>
+    {
+        public MultiSequencePilotTypeGraphType(GESECookingContext dbContext, IDataLoaderContextAccessor dataLoaderAccessor)
+        {
+            Field(t => t.PilotTypeId, type: typeof(ByteGraphType), nullable: False);
+            
+                Field<PilotTypeGraphType, PilotType>("PilotTypes")
+                    .ResolveAsync(context => 
+                    {
+                        var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<byte, PilotTypeGraphType>(
+                            "{ Name = EntityName "MultiSequencePilotType"
+  CorrespondingTable =
+   Regular
+     { Name = TableName "MultiSequencePilotType"
+       Properties =
+        [PrimaryKey { Type = Byte
+                      Name = "PilotTypeId"
+                      IsNullable = false };
+         Navigation { Type = TableName "PilotType"
+                      Name = "PilotType"
+                      IsNullable = false
+                      IsCollection = false };
+         Navigation { Type = TableName "PrmPilotMultiSequence"
+                      Name = "PrmPilotMultiSequencePilotTypeId0Navigations"
+                      IsNullable = false
+                      IsCollection = true };
+         Navigation { Type = TableName "PrmPilotMultiSequence"
+                      Name = "PrmPilotMultiSequencePilotTypeId1Navigations"
+                      IsNullable = false
+                      IsCollection = true };
+         Navigation { Type = TableName "PrmPilotMultiSequence"
+                      Name = "PrmPilotMultiSequencePilotTypeId2Navigations"
+                      IsNullable = false
+                      IsCollection = true };
+         Navigation { Type = TableName "PrmPilotMultiSequence"
+                      Name = "PrmPilotMultiSequencePilotTypeId3Navigations"
+                      IsNullable = false
+                      IsCollection = true }] }
+  Fields = [{ Name = "PilotTypeId"
+              Type = Id Byte
+              IsNullable = false }]
+  Relations =
+   [OneToOne
+      { Name = RelationName "PilotType"
+        TargetTable =
+         { Name = TableName "PilotType"
+           Properties =
+            [PrimaryKey { Type = Byte
+                          Name = "PilotTypeId"
+                          IsNullable = false };
+             Primitive { Type = String
+                         Name = "PilotTypeDsc"
+                         IsNullable = false }; Primitive { Type = Byte
+                                                           Name = "NumPins"
+                                                           IsNullable = false };
+             Primitive { Type = Bool
+                         Name = "NeedParams"
+                         IsNullable = false };
+             Primitive { Type = Bool
+                         Name = "NeedFeedbacks"
+                         IsNullable = false };
+             Primitive { Type = Bool
+                         Name = "IsSafetyRelevant"
+                         IsNullable = false };
+             Navigation { Type = TableName "LoadDetail"
+                          Name = "LoadDetails"
+                          IsNullable = false
+                          IsCollection = true };
+             Navigation { Type = TableName "MultiDriverPilotType"
+                          Name = "MultiDriverPilotType"
+                          IsNullable = true
+                          IsCollection = false };
+             Navigation { Type = TableName "MultiSequencePilotType"
+                          Name = "MultiSequencePilotType"
+                          IsNullable = true
+                          IsCollection = false };
+             Navigation { Type = TableName "PrmPilotMultiDriver"
+                          Name = "PrmPilotMultiDriverPilotTypeId0Navigations"
+                          IsNullable = false
+                          IsCollection = true };
+             Navigation { Type = TableName "PrmPilotMultiDriver"
+                          Name = "PrmPilotMultiDriverPilotTypeId1Navigations"
+                          IsNullable = false
+                          IsCollection = true };
+             Navigation { Type = TableName "PrmPilotMultiDriver"
+                          Name = "PrmPilotMultiDriverPilotTypeId2Navigations"
+                          IsNullable = false
+                          IsCollection = true };
+             Navigation { Type = TableName "PrmPilotMultiDriver"
+                          Name = "PrmPilotMultiDriverPilotTypeId3Navigations"
+                          IsNullable = false
+                          IsCollection = true };
+             Navigation { Type = TableName "LoadType"
+                          Name = "LoadTypes"
+                          IsNullable = false
+                          IsCollection = true }] }
+        Destination = EntityName "PilotType"
+        IsNullable = false
+        KeyType = Byte };
+    OneToMany
+      { Name = RelationName "PrmPilotMultiSequence"
+        TargetTable =
+         { Name = TableName "PrmPilotMultiSequence"
+           Properties =
+            [PrimaryKey { Type = Guid
+                          Name = "Id"
+                          IsNullable = false };
+             Primitive { Type = Byte
+                         Name = "PilotTypeId0"
+                         IsNullable = false };
+             Primitive { Type = Guid
+                         Name = "PilotParametersId0"
+                         IsNullable = true }; Primitive { Type = Byte
+                                                          Name = "PilotTypeId1"
+                                                          IsNullable = true };
+             Primitive { Type = Guid
+                         Name = "PilotParametersId1"
+                         IsNullable = true }; Primitive { Type = Byte
+                                                          Name = "PilotTypeId2"
+                                                          IsNullable = true };
+             Primitive { Type = Guid
+                         Name = "PilotParametersId2"
+                         IsNullable = true }; Primitive { Type = Byte
+                                                          Name = "PilotTypeId3"
+                                                          IsNullable = true };
+             Primitive { Type = Guid
+                         Name = "PilotParametersId3"
+                         IsNullable = true };
+             Primitive { Type = Guid
+                         Name = "SequencesConfiguration"
+                         IsNullable = true }; Primitive { Type = Byte
+                                                          Name = "NumOfPins"
+                                                          IsNullable = false };
+             Navigation { Type = TableName "MultiSequencePilotType"
+                          Name = "PilotTypeId0Navigation"
+                          IsNullable = false
+                          IsCollection = false };
+             Navigation { Type = TableName "MultiSequencePilotType"
+                          Name = "PilotTypeId1Navigation"
+                          IsNullable = true
+                          IsCollection = false };
+             Navigation { Type = TableName "MultiSequencePilotType"
+                          Name = "PilotTypeId2Navigation"
+                          IsNullable = true
+                          IsCollection = false };
+             Navigation { Type = TableName "MultiSequencePilotType"
+                          Name = "PilotTypeId3Navigation"
+                          IsNullable = true
+                          IsCollection = false };
+             Navigation { Type = TableName "PilotMultiSequenceConfig"
+                          Name = "SequencesConfigurationNavigation"
+                          IsNullable = true
+                          IsCollection = false }] }
+        Destination = EntityName "PrmPilotMultiSequence"
+        KeyType = Guid }] }-PilotType-loader",
+                            async ids => 
+                            {
+                                var data = await dbContext.PilotTypes
+                                    .Where(x => x.PilotType != null && ids.Contains((byte)x.PilotType))
+                                    .Select(x => new
+                                    {
+                                        Key = (byte)x.PilotType!,
+                                        Value = x,
+                                    })
+                                    .ToListAsync();
+
+                                return data.ToLookup(x => x.Key, x => x.Value);
+                            });
+
+                        return loader.LoadAsync(context.Source.PilotTypes);
+                    });
+            
+			
+                Field<PrmPilotMultiSequenceGraphType, PrmPilotMultiSequence>("PrmPilotMultiSequences")
+                    .ResolveAsync(context => 
+                    {
+                        var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<Guid, IEnumerable<PrmPilotMultiSequenceGraphType>>(
+                            "{ Name = EntityName "MultiSequencePilotType"
+  CorrespondingTable =
+   Regular
+     { Name = TableName "MultiSequencePilotType"
+       Properties =
+        [PrimaryKey { Type = Byte
+                      Name = "PilotTypeId"
+                      IsNullable = false };
+         Navigation { Type = TableName "PilotType"
+                      Name = "PilotType"
+                      IsNullable = false
+                      IsCollection = false };
+         Navigation { Type = TableName "PrmPilotMultiSequence"
+                      Name = "PrmPilotMultiSequencePilotTypeId0Navigations"
+                      IsNullable = false
+                      IsCollection = true };
+         Navigation { Type = TableName "PrmPilotMultiSequence"
+                      Name = "PrmPilotMultiSequencePilotTypeId1Navigations"
+                      IsNullable = false
+                      IsCollection = true };
+         Navigation { Type = TableName "PrmPilotMultiSequence"
+                      Name = "PrmPilotMultiSequencePilotTypeId2Navigations"
+                      IsNullable = false
+                      IsCollection = true };
+         Navigation { Type = TableName "PrmPilotMultiSequence"
+                      Name = "PrmPilotMultiSequencePilotTypeId3Navigations"
+                      IsNullable = false
+                      IsCollection = true }] }
+  Fields = [{ Name = "PilotTypeId"
+              Type = Id Byte
+              IsNullable = false }]
+  Relations =
+   [OneToOne
+      { Name = RelationName "PilotType"
+        TargetTable =
+         { Name = TableName "PilotType"
+           Properties =
+            [PrimaryKey { Type = Byte
+                          Name = "PilotTypeId"
+                          IsNullable = false };
+             Primitive { Type = String
+                         Name = "PilotTypeDsc"
+                         IsNullable = false }; Primitive { Type = Byte
+                                                           Name = "NumPins"
+                                                           IsNullable = false };
+             Primitive { Type = Bool
+                         Name = "NeedParams"
+                         IsNullable = false };
+             Primitive { Type = Bool
+                         Name = "NeedFeedbacks"
+                         IsNullable = false };
+             Primitive { Type = Bool
+                         Name = "IsSafetyRelevant"
+                         IsNullable = false };
+             Navigation { Type = TableName "LoadDetail"
+                          Name = "LoadDetails"
+                          IsNullable = false
+                          IsCollection = true };
+             Navigation { Type = TableName "MultiDriverPilotType"
+                          Name = "MultiDriverPilotType"
+                          IsNullable = true
+                          IsCollection = false };
+             Navigation { Type = TableName "MultiSequencePilotType"
+                          Name = "MultiSequencePilotType"
+                          IsNullable = true
+                          IsCollection = false };
+             Navigation { Type = TableName "PrmPilotMultiDriver"
+                          Name = "PrmPilotMultiDriverPilotTypeId0Navigations"
+                          IsNullable = false
+                          IsCollection = true };
+             Navigation { Type = TableName "PrmPilotMultiDriver"
+                          Name = "PrmPilotMultiDriverPilotTypeId1Navigations"
+                          IsNullable = false
+                          IsCollection = true };
+             Navigation { Type = TableName "PrmPilotMultiDriver"
+                          Name = "PrmPilotMultiDriverPilotTypeId2Navigations"
+                          IsNullable = false
+                          IsCollection = true };
+             Navigation { Type = TableName "PrmPilotMultiDriver"
+                          Name = "PrmPilotMultiDriverPilotTypeId3Navigations"
+                          IsNullable = false
+                          IsCollection = true };
+             Navigation { Type = TableName "LoadType"
+                          Name = "LoadTypes"
+                          IsNullable = false
+                          IsCollection = true }] }
+        Destination = EntityName "PilotType"
+        IsNullable = false
+        KeyType = Byte };
+    OneToMany
+      { Name = RelationName "PrmPilotMultiSequence"
+        TargetTable =
+         { Name = TableName "PrmPilotMultiSequence"
+           Properties =
+            [PrimaryKey { Type = Guid
+                          Name = "Id"
+                          IsNullable = false };
+             Primitive { Type = Byte
+                         Name = "PilotTypeId0"
+                         IsNullable = false };
+             Primitive { Type = Guid
+                         Name = "PilotParametersId0"
+                         IsNullable = true }; Primitive { Type = Byte
+                                                          Name = "PilotTypeId1"
+                                                          IsNullable = true };
+             Primitive { Type = Guid
+                         Name = "PilotParametersId1"
+                         IsNullable = true }; Primitive { Type = Byte
+                                                          Name = "PilotTypeId2"
+                                                          IsNullable = true };
+             Primitive { Type = Guid
+                         Name = "PilotParametersId2"
+                         IsNullable = true }; Primitive { Type = Byte
+                                                          Name = "PilotTypeId3"
+                                                          IsNullable = true };
+             Primitive { Type = Guid
+                         Name = "PilotParametersId3"
+                         IsNullable = true };
+             Primitive { Type = Guid
+                         Name = "SequencesConfiguration"
+                         IsNullable = true }; Primitive { Type = Byte
+                                                          Name = "NumOfPins"
+                                                          IsNullable = false };
+             Navigation { Type = TableName "MultiSequencePilotType"
+                          Name = "PilotTypeId0Navigation"
+                          IsNullable = false
+                          IsCollection = false };
+             Navigation { Type = TableName "MultiSequencePilotType"
+                          Name = "PilotTypeId1Navigation"
+                          IsNullable = true
+                          IsCollection = false };
+             Navigation { Type = TableName "MultiSequencePilotType"
+                          Name = "PilotTypeId2Navigation"
+                          IsNullable = true
+                          IsCollection = false };
+             Navigation { Type = TableName "MultiSequencePilotType"
+                          Name = "PilotTypeId3Navigation"
+                          IsNullable = true
+                          IsCollection = false };
+             Navigation { Type = TableName "PilotMultiSequenceConfig"
+                          Name = "SequencesConfigurationNavigation"
+                          IsNullable = true
+                          IsCollection = false }] }
+        Destination = EntityName "PrmPilotMultiSequence"
+        KeyType = Guid }] }-PrmPilotMultiSequence-loader",
+                            async ids => 
+                            {
+                                var data = await dbContext.PrmPilotMultiSequences
+                                    .Where(x => x.PrmPilotMultiSequence != null && ids.Contains((Guid)x.PrmPilotMultiSequence))
+                                    .Select(x => new
+                                    {
+                                        Key = (Guid)x.PrmPilotMultiSequence!,
+                                        Value = x,
+                                    })
+                                    .ToListAsync();
+                            });
+
+                        return loader.LoadAsync(context.Source.PrmPilotMultiSequences);
+                    });
+            
+        }
+    }
+}
+            
