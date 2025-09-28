@@ -73,7 +73,7 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
                     
                     // Write content to file (overwrite if exists)
                     File.WriteAllText(outputPath, content)
-                    printfn $"Generated: {outputFileName}"
+                    // printfn $"Generated: {outputFileName}"
                     successCount <- successCount + 1
                 with
                 | ex ->

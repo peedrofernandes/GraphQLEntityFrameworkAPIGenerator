@@ -88,6 +88,11 @@ type TableParser() =
             
             let isKeyless = isKeylessEntity fileContent
 
+            let hasMultipleKeyAttributes = 
+                System.Text.RegularExpressions.Regex.Matches(fileContent, @"\[Key\]")
+                |> Seq.length
+                |> (<) 1
+
             let mapPrimitiveType (typeStr: string) : PrimitiveType =
                 match typeStr.ToLower() with
                 | "int" -> PrimitiveType.Int
@@ -132,11 +137,9 @@ type TableParser() =
                 let navigationProperties = System.Text.RegularExpressions.Regex.Matches(content, navigationPattern)
                 let properties = System.Text.RegularExpressions.Regex.Matches(content, propertyWithAttributePattern)
 
-                let hasMultipleKeyAttributes = 
-                    System.Text.RegularExpressions.Regex.Matches(content, @"\[Key\]")
-                    |> Seq.length
-                    |> (>) 1
-                
+                if hasMultipleKeyAttributes then
+                    printfn $"Table '{tableName}' has multiple key attributes"
+
                 let regularProps = 
                     [for match' in properties do
                         let attributesStr = match'.Groups.[1].Value.Trim()
@@ -206,9 +209,10 @@ type TableParser() =
                 
                 regularProps @ navProps
 
+            let properties = parseProperties fileContent
+
             // If it's a keyless entity, create a View table with only primitive properties
             if isKeyless then
-                let properties = parseProperties fileContent
                 let primitiveProps = 
                     properties
                     |> List.choose (fun property ->
@@ -217,8 +221,6 @@ type TableParser() =
                         | _ -> None)
                 View { Name = tableName; Properties = primitiveProps }
             else
-                let properties = parseProperties fileContent
-
                 let hasPrimaryKey =
                     properties
                     |> Seq.choose (fun property ->
