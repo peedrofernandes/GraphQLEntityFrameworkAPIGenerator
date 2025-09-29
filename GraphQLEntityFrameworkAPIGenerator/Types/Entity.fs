@@ -31,6 +31,7 @@ type RelationName = RelationName of string
 //         4. If here is a collection and there is a collection, then it's a many-to-many relation;
 
 type OneToOneRelation = {
+    KeyName: string
     Name: RelationName
     TargetTable : RegularTable
     Destination: EntityName
@@ -38,6 +39,7 @@ type OneToOneRelation = {
     KeyType: IdType
 }
 type SingleManyToOneRelation = {
+    KeyName: string
     Name: RelationName
     TargetTable : RegularTable
     Destination: EntityName

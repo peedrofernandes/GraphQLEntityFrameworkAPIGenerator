@@ -1,0 +1,56 @@
+
+using GraphQL.Types;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using WP.Cooking.GESE.WebAPI.Models;
+using GraphQL.DataLoader;
+using WP.Cooking.GESE.WebAPI.Repositories; 
+
+
+namespace WP.Cooking.GESE.WebAPI.GraphQL.Types
+{
+    public partial class DataModelDefinitionConfigurationGraphType : ObjectGraphType<DataModelDefinitionConfiguration>
+    {
+        public DataModelDefinitionConfigurationGraphType(GESECookingContext dbContext, IDataLoaderContextAccessor dataLoaderAccessor)
+        {
+            Field(t => t.DataModelDefinitionConfigurationId, type: typeof(GuidGraphType), nullable: False);
+			Field(t => t.Description, type: typeof(StringGraphType), nullable: False);
+			Field(t => t.Status, type: typeof(ByteGraphType), nullable: False);
+			Field(t => t.Owner, type: typeof(StringGraphType), nullable: False);
+			Field(t => t.Timestamp, type: typeof(DateTimeGraphType), nullable: False);
+			Field(t => t.RevisionGroup, type: typeof(GuidGraphType), nullable: False);
+			Field(t => t.Revision, type: typeof(IdGraphType), nullable: False);
+			Field(t => t.TableTarget, type: typeof(ByteGraphType), nullable: False);
+			Field(t => t.Notes, type: typeof(StringGraphType), nullable: True);
+			Field(t => t.DataModelVersion, type: typeof(IdGraphType), nullable: False);
+			Field(t => t.DataModelApi, type: typeof(IdGraphType), nullable: False);
+			Field(t => t.DataModelCategory, type: typeof(IdGraphType), nullable: False);
+            
+            Field<DataModelDefinitionDetailGraphType, DataModelDefinitionDetail>("DataModelDefinitionDetails")
+                .ResolveAsync(context => 
+                {
+                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<Guid, IEnumerable<DataModelDefinitionDetailGraphType>>(
+                        "DataModelDefinitionConfiguration-DataModelDefinitionDetail-loader",
+                        async ids => 
+                        {
+                            var data = await dbContext.DataModelDefinitionConfigurationsDataModelDefinitionDetail
+                                .Where(x => x.DataModelDefinitionConfigurationId != null && ids.Contains((Guid)x.DataModelDefinitionConfigurationId))
+                                .Select(x => new
+                                {
+                                    Key = (Guid)x.DataModelDefinitionConfigurationId!,
+                                    Value = x.DataModelDefinitionDetail,
+                                })
+                                .ToListAsync();
+
+                            return data.ToLookup(x => x.Key, x => x.Value);
+                        });
+
+                    return loader.LoadAsync(context.Source.DataModelDefinitionDetails);
+                });
+            
+        }
+    }
+}
+            

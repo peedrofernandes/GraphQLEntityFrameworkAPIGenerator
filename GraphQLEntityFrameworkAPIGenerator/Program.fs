@@ -28,6 +28,15 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
             "CodeBuilderContainer"
             "CodeBuilderContainersElement"
             "CodeBuildersCodeBuilderContainer"
+            "MultiDriverPilotType"
+            "MultiSequencePilotType"
+            "MultiInputReadType"
+            "PrmPilotMultiSequence"
+            "PilotMultiSequenceConfig"
+            "PilotMultiSequenceConfigDetail"
+            "PilotMultiSequenceDetail"
+            "PilotMultiSequenceDetailsStep"
+            "PilotMultiSequenceStep"
         ]
 
         let ignoredProperties : Map<TableName, string list> =
@@ -35,6 +44,7 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
                 (TableName "Modifier", [ "ModifierType51"; "ModifierType61" ])
                 (TableName "PilotType", [ "MultiDriverPilotType"; "MultiSequencePilotType" ])
                 (TableName "ReadType", [ "MultiInputReadType" ])
+                (TableName "PrmPilotMultiSequence", [ "MultiSequencePilotType" ])
                 //(TableName "MultiDriverPilotType", [ "PilotType" ])
             ]
         

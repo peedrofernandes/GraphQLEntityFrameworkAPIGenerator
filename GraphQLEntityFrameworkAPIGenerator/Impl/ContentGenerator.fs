@@ -138,148 +138,156 @@ open GraphQLEntityFrameworkAPIGenerator.Types
 type ContentGenerator() =
     // private method, given a field, return the corresponding GraphQL field
     member private this.MapField(field: Field) : string =
+        let mapBool(v: bool) =
+            match v with
+            | true -> "true"
+            | false -> "false"
+
         match field.Type with
         | Type.Primitive(primitiveType) ->
             match primitiveType with
-            | PrimitiveType.Int -> $$"""Field(t => t.{{field.Name}}, type: typeof(IdGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.String -> $$"""Field(t => t.{{field.Name}}, type: typeof(StringGraphType), nullable: {{field.IsNullable}});"""  
-            | PrimitiveType.Guid -> $$"""Field(t => t.{{field.Name}}, type: typeof(GuidGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.DateTime -> $$"""Field(t => t.{{field.Name}}, type: typeof(DateTimeGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.DateTimeOffset -> $$"""Field(t => t.{{field.Name}}, type: typeof(DateTimeOffsetGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.TimeSpan -> $$"""Field(t => t.{{field.Name}}, type: typeof(TimeSpanGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.Decimal -> $$"""Field(t => t.{{field.Name}}, type: typeof(DecimalGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.Double -> $$"""Field(t => t.{{field.Name}}, type: typeof(DoubleGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.Float -> $$"""Field(t => t.{{field.Name}}, type: typeof(FloatGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.Long -> $$"""Field(t => t.{{field.Name}}, type: typeof(LongGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.Short -> $$"""Field(t => t.{{field.Name}}, type: typeof(ShortGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.Ushort -> $$"""Field(t => t.{{field.Name}}, type: typeof(UshortGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.Uint -> $$"""Field(t => t.{{field.Name}}, type: typeof(UintGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.Ulong -> $$"""Field(t => t.{{field.Name}}, type: typeof(UlongGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.Sbyte -> $$"""Field(t => t.{{field.Name}}, type: typeof(SbyteGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.Char -> $$"""Field(t => t.{{field.Name}}, type: typeof(CharGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.Byte -> $$"""Field(t => t.{{field.Name}}, type: typeof(ByteGraphType), nullable: {{field.IsNullable}});"""
-            | PrimitiveType.Bool -> $$"""Field(t => t.{{field.Name}}, type: typeof(BoolGraphType), nullable: {{field.IsNullable}});"""
+            | PrimitiveType.Int -> $$"""Field(t => t.{{field.Name}}, type: typeof(IdGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.String -> $$"""Field(t => t.{{field.Name}}, type: typeof(StringGraphType), nullable: {{mapBool(field.IsNullable)}});"""  
+            | PrimitiveType.Guid -> $$"""Field(t => t.{{field.Name}}, type: typeof(GuidGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.DateTime -> $$"""Field(t => t.{{field.Name}}, type: typeof(DateTimeGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.DateTimeOffset -> $$"""Field(t => t.{{field.Name}}, type: typeof(DateTimeOffsetGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.TimeSpan -> $$"""Field(t => t.{{field.Name}}, type: typeof(TimeSpanGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Decimal -> $$"""Field(t => t.{{field.Name}}, type: typeof(DecimalGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Double -> $$"""Field(t => t.{{field.Name}}, type: typeof(DoubleGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Float -> $$"""Field(t => t.{{field.Name}}, type: typeof(FloatGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Long -> $$"""Field(t => t.{{field.Name}}, type: typeof(LongGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Short -> $$"""Field(t => t.{{field.Name}}, type: typeof(ShortGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Ushort -> $$"""Field(t => t.{{field.Name}}, type: typeof(UshortGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Uint -> $$"""Field(t => t.{{field.Name}}, type: typeof(UintGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Ulong -> $$"""Field(t => t.{{field.Name}}, type: typeof(UlongGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Sbyte -> $$"""Field(t => t.{{field.Name}}, type: typeof(SbyteGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Char -> $$"""Field(t => t.{{field.Name}}, type: typeof(CharGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Byte -> $$"""Field(t => t.{{field.Name}}, type: typeof(ByteGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Bool -> $$"""Field(t => t.{{field.Name}}, type: typeof(BooleanGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.ByteArr -> $$"""Field(t => t.{{field.Name}}, type: typeof(ListGraphType<ByteGraphType>), nullable: {{mapBool(field.IsNullable)}});"""
         | Type.Id(idType) ->
             match idType with
-            | IdType.Int -> $$"""Field(t => t.{{field.Name}}, type: typeof(IdGraphType), nullable: {{field.IsNullable}});"""
-            | IdType.String -> $$"""Field(t => t.{{field.Name}}, type: typeof(StringGraphType), nullable: {{field.IsNullable}});"""
-            | IdType.Guid -> $$"""Field(t => t.{{field.Name}}, type: typeof(GuidGraphType), nullable: {{field.IsNullable}});"""
-            | IdType.Byte -> $$"""Field(t => t.{{field.Name}}, type: typeof(ByteGraphType), nullable: {{field.IsNullable}});"""
-            | IdType.Bool -> $$"""Field(t => t.{{field.Name}}, type: typeof(BoolGraphType), nullable: {{field.IsNullable}});"""
-            | IdType.Float -> $$"""Field(t => t.{{field.Name}}, type: typeof(FloatGraphType), nullable: {{field.IsNullable}});"""
-            | IdType.Short -> $$"""Field(t => t.{{field.Name}}, type: typeof(ShortGraphType), nullable: {{field.IsNullable}});"""
+            | IdType.Int -> $$"""Field(t => t.{{field.Name}}, type: typeof(IdGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | IdType.String -> $$"""Field(t => t.{{field.Name}}, type: typeof(StringGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | IdType.Guid -> $$"""Field(t => t.{{field.Name}}, type: typeof(GuidGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | IdType.Byte -> $$"""Field(t => t.{{field.Name}}, type: typeof(ByteGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | IdType.Bool -> $$"""Field(t => t.{{field.Name}}, type: typeof(BooleanGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | IdType.Float -> $$"""Field(t => t.{{field.Name}}, type: typeof(FloatGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | IdType.Short -> $$"""Field(t => t.{{field.Name}}, type: typeof(ShortGraphType), nullable: {{mapBool(field.IsNullable)}});"""
 
     member private this.MapRelation(entity: Entity, relation: Relation) : string =
 
         let getExpressionStatements(names : RelationName list, r : MultipleManyToOneRelation) : string =
             names
-            |> List.map (fun name -> $$"""\|\| (x.{{name}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{name}}))""")
-            |> String.concat "\n"
+            |> List.map (fun name -> $$"""|| (x.{{name}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{name}}))""")
+            |> String.concat "\n\t\t\t\t\t\t\t\t"
 
         let getMappingStatements(names : RelationName list, r : MultipleManyToOneRelation) : string =
             names
             |> List.map (fun name -> $$"""x.{{name}}""")
-            |> String.concat ",\n"
+            |> String.concat ",\n\t\t\t\t\t\t\t\t\t"
 
         match relation with
         | OneToOne(r) -> 
             $$"""
-                Field<{{r.Destination}}GraphType, {{r.Destination}}>("{{r.Destination.Pluralize()}}")
-                    .ResolveAsync(context => 
-                    {
-                        var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, {{r.Destination}}GraphType>(
-                            "{{entity}}-{{r.Destination}}-loader",
-                            async ids => 
-                            {
-                                var data = await dbContext.{{r.Destination.Pluralize()}}
-                                    .Where(x => x.{{r.Name}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{r.Name}}))
-                                    .Select(x => new
-                                    {
-                                        Key = ({{r.KeyType.ToString()}})x.{{r.Name}}!,
-                                        Value = x,
-                                    })
-                                    .ToListAsync();
+            Field<{{r.Destination}}GraphType, {{r.Destination}}>("{{r.Destination.Pluralize()}}") // Debug - OneToOne(r) case
+                .ResolveAsync(context => 
+                {
+                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, {{r.Destination}}>(
+                        "{{entity.Name.ToString()}}-{{r.Destination.ToString()}}-loader",
+                        async ids => 
+                        {
+                            var data = await dbContext.{{r.Destination.Pluralize().ToString()}}
+                                .Where(x => x.{{r.Name}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{r.Name.ToString()}}))
+                                .Select(x => new
+                                {
+                                    Key = ({{r.KeyType.ToString()}})x.{{r.Name.ToString()}}!,
+                                    Value = x,
+                                })
+                                .ToListAsync();
 
-                                return data.ToLookup(x => x.Key, x => x.Value);
-                            });
+                            return data.ToLookup(x => x.Key, x => x.Value);
+                        });
 
-                        return loader.LoadAsync(context.Source.{{r.Destination.Pluralize()}});
-                    });
+                    return loader.LoadAsync(context.Source.{{r.KeyName}});
+                });
             """
         | SingleManyToOne(r) -> 
+            let primaryKey = r.TargetTable.PrimaryKey
+
             $$"""
-                Field<{{r.Destination}}GraphType, {{r.Destination}}>("{{r.Destination.Pluralize()}}")
-                    .ResolveAsync(context => 
-                    {
-                        var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, {{r.Destination}}GraphType>(
-                            "{{entity}}-{{r.Destination}}-loader",
-                            async ids => 
-                            {
-                                var data = await dbContext.{{r.Destination.Pluralize()}}
-                                    .Where(x => x.{{r.Name}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{r.Name}}))
-                                    .Select(x => new
-                                    {
-                                        Key = ({{r.KeyType.ToString()}})x.{{r.Name}}!,
-                                        Value = x,
-                                    })
-                                    .ToListAsync();
+            Field<{{r.Destination.ToString()}}GraphType, {{r.Destination.ToString()}}>("{{r.Destination.Pluralize().ToString()}}") // Debug - SingleManyToOne(r) case
+                .ResolveAsync(context => 
+                {
+                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, {{r.Destination.ToString()}}>(
+                        "{{entity.Name.ToString()}}-{{r.Destination.ToString()}}-loader",
+                        async ids => 
+                        {
+                            var data = await dbContext.{{r.Destination.Pluralize().ToString()}}
+                                .Where(x => x.{{primaryKey.Name.ToString()}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{primaryKey.Name.ToString()}}))
+                                .Select(x => new
+                                {
+                                    Key = ({{r.KeyType.ToString()}})x.{{primaryKey.Name.ToString()}}!,
+                                    Value = x,
+                                })
+                                .ToListAsync();
 
-                                return data.ToLookup(x => x.Key, x => x.Value);
-                            });
+                            return data.ToLookup(x => x.Key, x => x.Value);
+                        });
 
-                        return loader.LoadAsync(context.Source.{{r.Name}});
+                    return loader.LoadAsync(context.Source.{{r.KeyName}});
                 });
             """
         | MultipleManyToOne(r) -> 
             $$"""
-                Field<{{r.Destination}}GraphType, {{r.Destination}}>("{{r.Destination.Pluralize()}}")
-                    .ResolveAsync(context => 
-                    {
-                        var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, {{r.Destination}}GraphType>(
-                            "{{entity}}-{{r.Destination}}-loader",
-                            async ids => 
-                            {
-                                Expression<Func<{{r.Destination}}, bool>> expr = x => !ids.Any()
-                                    {{getExpressionStatements(r.Names, r)}};
+            Field<{{r.Destination.ToString()}}GraphType, {{r.Destination.ToString()}}>("{{r.Destination.Pluralize().ToString()}}") // Debug - MultipleManyToOne(r) case
+                .ResolveAsync(context => 
+                {
+                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, {{r.Destination.ToString()}}>(
+                        "{{entity.Name.ToString()}}-{{r.Destination.ToString()}}-loader",
+                        async ids => 
+                        {
+                            Expression<Func<{{r.Destination.ToString()}}, bool>> expr = x => !ids.Any()
+                                {{getExpressionStatements(r.Names, r)}};
 
-                                var data = await dbContext.{{r.Destination.Pluralize()}}
-                                    .Where(expr)
-                                    .ToListAsync();
+                            var data = await dbContext.{{r.Destination.Pluralize().ToString()}}
+                                .Where(expr)
+                                .ToListAsync();
 
-                                var lookup = data
-                                    .SelectMany(x => new List<{{r.KeyType.ToString()}}?>()
-                                    {
-                                        {{getMappingStatements(r.Names, r)}}
-                                    }.OfType<{{r.KeyType.ToString()}}>().Select(id => new { Key = id, Value = x }))
-                                    .ToLookup(x => x.Key, x => x.Value);
+                            var lookup = data
+                                .SelectMany(x => new List<{{r.KeyType.ToString()}}?>()
+                                {
+                                    {{getMappingStatements(r.Names, r)}}
+                                }.OfType<{{r.KeyType.ToString()}}>().Select(id => new { Key = id, Value = x }))
+                                .ToLookup(x => x.Key, x => x.Value);
 
-                                return lookup;
-                            });
+                            return lookup;
+                        });
 
-                        return loader.LoadAsync(context.Source.{{r.Destination.Pluralize()}});
-                    });
+                    return loader.LoadAsync(context.Source.{{r.Destination.Pluralize().ToString()}});
+                });
             """
         | OneToMany(r) -> 
             $$"""
-                Field<{{r.Destination}}GraphType, {{r.Destination}}>("{{r.Destination.Pluralize()}}")
-                    .ResolveAsync(context => 
-                    {
-                        var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, IEnumerable<{{r.Destination}}GraphType>>(
-                            "{{entity}}-{{r.Destination}}-loader",
-                            async ids => 
-                            {
-                                var data = await dbContext.{{r.Destination.Pluralize()}}
-                                    .Where(x => x.{{r.Name}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{r.Name}}))
-                                    .Select(x => new
-                                    {
-                                        Key = ({{r.KeyType.ToString()}})x.{{r.Name}}!,
-                                        Value = x,
-                                    })
-                                    .ToListAsync();
-                            });
+            Field<{{r.Destination.ToString()}}GraphType, {{r.Destination.ToString()}}>("{{r.Destination.Pluralize().ToString()}}") // Debug - OneToMany(r) case
+                .ResolveAsync(context => 
+                {
+                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, {{r.Destination}}>(
+                        "{{entity.Name.ToString()}}-{{r.Destination.ToString()}}-loader",
+                        async ids => 
+                        {
+                            var data = await dbContext.{{r.Destination.Pluralize().ToString()}}
+                                .Where(x => x.{{r.Name.ToString()}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{r.Name.ToString()}}))
+                                .Select(x => new
+                                {
+                                    Key = ({{r.KeyType.ToString()}})x.{{r.Name.ToString()}}!,
+                                    Value = x,
+                                })
+                                .ToListAsync();
+                        });
 
-                        return loader.LoadAsync(context.Source.{{r.Destination.Pluralize()}});
-                    });
+                    return loader.LoadAsync(context.Source.{{r.Destination.Pluralize().ToString()}});
+                });
             """
         | ManyToManyWithJoinTable(r) -> 
             let destinationForeignKeyOnJoinTable = 
@@ -294,53 +302,53 @@ type ContentGenerator() =
                 | head :: _ -> head.Name
             
             $$"""
-                Field<{{r.Destination}}GraphType, {{r.Destination}}>("{{r.Destination.Pluralize()}}")
-                    .ResolveAsync(context => 
-                    {
-                        var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, IEnumerable<{{r.Destination}}GraphType>>(
-                            "{{entity}}-{{r.Destination}}-loader",
-                            async ids => 
-                            {
-                                var data = await dbContext.{{r.JoinTable.Name}}
-                                    .Where(x => x.{{destinationForeignKeyOnJoinTable}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{destinationForeignKeyOnJoinTable}}))
-                                    .Select(x => new
-                                    {
-                                        Key = ({{r.KeyType.ToString()}})x.{{destinationForeignKeyOnJoinTable}}!,
-                                        Value = x.{{destinationNavigationPropertyOnJoinTable}},
-                                    })
-                                    .ToListAsync();
+            Field<ListGraphType<{{r.Destination.ToString()}}GraphType>, IEnumerable<{{r.Destination.ToString()}}>>("{{r.Destination.Pluralize().ToString()}}") // Debug - ManyToManyWithJoinTable(r) case
+                .ResolveAsync(context => 
+                {
+                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, {{r.Destination.ToString()}}>(
+                        "{{entity.Name.ToString()}}-{{r.Destination.ToString()}}-loader",
+                        async ids => 
+                        {
+                            var data = await dbContext.{{r.JoinTable.Name.Pluralize().ToString()}}
+                                .Where(x => x.{{destinationForeignKeyOnJoinTable}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{destinationForeignKeyOnJoinTable}}))
+                                .Select(x => new
+                                {
+                                    Key = ({{r.KeyType.ToString()}})x.{{destinationForeignKeyOnJoinTable}}!,
+                                    Value = x.{{destinationNavigationPropertyOnJoinTable}},
+                                })
+                                .ToListAsync();
 
-                                return data.ToLookup(x => x.Key, x => x.Value);
-                            });
+                            return data.ToLookup(x => x.Key, x => x.Value);
+                        });
 
-                        return loader.LoadAsync(context.Source.{{r.Destination.Pluralize()}});
-                    });
+                    return loader.LoadAsync(context.Source.{{r.Destination.Pluralize()}});
+                });
             """
         | ManyToMany(r) -> 
             $$"""
-                Field<{{r.Destination}}GraphType, {{r.Destination}}>("{{r.Destination.Pluralize()}}")
-                    .ResolveAsync(context => 
-                    {
-                        var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, {{r.Destination}}GraphType>(
-                            "{{entity}}-{{r.Destination}}-loader",
-                            async ids => 
-                            {
-                                var data = await dbContext.{{r.Destination.Pluralize()}}
-                                    .Where(x => x.{{r.Name}}.Any(c => ids.Contains(c.{{r.TargetTable.PrimaryKey.Name}})))
-                                    .Select(x => new
-                                    {
-                                        Key = x,
-                                        Values = x.{{r.Name}},
-                                    })
-                                    .ToListAsync();
+            Field<{{r.Destination.ToString()}}GraphType, {{r.Destination.ToString()}}>("{{r.Destination.Pluralize()}}") // Debug - ManyToMany(r) case
+                .ResolveAsync(context => 
+                {
+                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, {{r.Destination}}>(
+                        "{{entity.Name.ToString()}}-{{r.Destination.ToString()}}-loader",
+                        async ids => 
+                        {
+                            var data = await dbContext.{{r.Destination.Pluralize().ToString()}}
+                                .Where(x => x.{{r.Name.ToString()}}.Any(c => ids.Contains(c.{{r.TargetTable.PrimaryKey.Name.ToString()}})))
+                                .Select(x => new
+                                {
+                                    Key = x,
+                                    Values = x.{{r.Name.ToString()}},
+                                })
+                                .ToListAsync();
 
-                                var lookup = data
-                                    .SelectMany(x => x.Values.Select(v => new { Key = v.{{r.TargetTable.PrimaryKey.Name}}, Value = x.Key }))
-                                    .ToLookup(x => x.Key, x => x.Value);
-                            });
+                            var lookup = data
+                                .SelectMany(x => x.Values.Select(v => new { Key = v.{{r.TargetTable.PrimaryKey.Name.ToString()}}, Value = x.Key }))
+                                .ToLookup(x => x.Key, x => x.Value);
+                        });
 
-                        return loader.LoadAsync(context.Source.{{r.Destination.Pluralize()}});
-                    });
+                    return loader.LoadAsync(context.Source.{{r.Destination.Pluralize()}});
+                });
             """
 
     interface IContentGenerator with
@@ -358,13 +366,14 @@ type ContentGenerator() =
                 |> List.ofSeq
 
             let content = $$"""
+using GraphQL.DataLoader;
 using GraphQL.Types;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using WP.Cooking.GESE.WebAPI.Models;
-using GraphQL.DataLoader;
 using WP.Cooking.GESE.WebAPI.Repositories; 
 
 
@@ -372,7 +381,7 @@ namespace WP.Cooking.GESE.WebAPI.GraphQL.Types
 {
     public partial class {{entity.Name}}GraphType : ObjectGraphType<{{entity.Name}}>
     {
-        public {{entity.Name}}GraphType(GESECookingContext dbContext, IDataLoaderContextAccessor dataLoaderAccessor)
+        public {{entity.Name}}GraphType(GeseCookingContext dbContext, IDataLoaderContextAccessor dataLoaderAccessor)
         {
             {{mappedFields |> String.concat "\n\t\t\t"}}
             {{mappedRelations |> String.concat "\n\t\t\t"}}

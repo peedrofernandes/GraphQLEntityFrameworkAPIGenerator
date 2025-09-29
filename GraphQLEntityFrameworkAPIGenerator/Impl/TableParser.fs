@@ -229,7 +229,7 @@ type TableParser() =
                                 failwith $"No corresponding nav prop name for {propName} foreign key"
                             else
                                 ForeignKey { Type = mapIdType cleanType; Name = propName; IsNullable = isNullable; NavPropName = correspondingNavPropName.Value }
-                                |> List.singleton
+                            |> List.singleton
                         elif isNavigationProperty then
                             if isCollection then
                                 Navigation (Collection { Type = TableName cleanType; Name = propName; IsNullable = isNullable; })
@@ -243,7 +243,7 @@ type TableParser() =
                                     failwith $"No corresponding foreign key name for {propName} single navigation property"
                                 else
                                     Navigation (Single { Type = TableName cleanType; Name = propName; IsNullable = isNullable; FKeyName = correspondingForeignKeyName })
-                                    |> List.singleton
+                                |> List.singleton
                         elif isPrimitiveProperty then
                             Primitive { Type = mapPrimitiveType cleanType; Name = propName; IsNullable = isNullable }
                             |> List.singleton

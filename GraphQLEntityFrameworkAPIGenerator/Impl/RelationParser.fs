@@ -34,7 +34,7 @@ type RelationParser() =
                 | _ -> None)
             |> Seq.groupBy (fun navigationProperty -> navigationProperty.Type)
             |> Seq.collect (fun (navPropName, navProps) ->
-                let mainNavProp = 
+                let thisNavProp = 
                     match List.ofSeq navProps with
                     | [] -> failwith $"No navigation properties found for type '{navPropName}'"
                     | head :: _ -> head
@@ -43,50 +43,60 @@ type RelationParser() =
                     | Some table -> table
                     | None -> 
                         let availableTables = tables.Keys |> Seq.map (fun k -> k.ToString()) |> String.concat ", "
-                        failwith $"Table '{navPropName}', required for {table.Name}, not found in tables map. Available tables: {availableTables}"
+                        failwith $"Table '{navPropName}', required for {table.Name}, not found in tables map."
+                let thatNavProp =
+                    otherTable.NavigationProperties
+                    |> Seq.filter (fun otherNavProp ->
+                        otherNavProp.Type = table.Name)
+                    |> (fun n ->
+                        match Seq.tryHead n with
+                            | Some v -> v
+                            | _ -> failwith $"No backwards navigation property for {table.Name} table")
 
-                let hereIsSingle = not mainNavProp.IsCollection
-                let thereIsSingle =
-                    otherTable.NavigationProperties
-                    |> Seq.exists (fun otherNavProp ->
-                        otherNavProp.Type = table.Name && not otherNavProp.IsCollection)
-                let hereIsCollection = mainNavProp.IsCollection
-                let thereIsCollection = 
-                    otherTable.NavigationProperties
-                    |> Seq.exists (fun otherNavProp -> 
-                        otherNavProp.Type = table.Name && otherNavProp.IsCollection)
+                //let hereIsSingle = not mainNavProp.IsCollection
+                //let thereIsSingle =
+                //    otherTable.NavigationProperties
+                //    |> Seq.exists (fun otherNavProp ->
+                //        otherNavProp.Type = table.Name && not otherNavProp.IsCollection)
+                //let hereIsCollection = mainNavProp.IsCollection
+                //let thereIsCollection = 
+                //    otherTable.NavigationProperties
+                //    |> Seq.exists (fun otherNavProp -> 
+                //        otherNavProp.Type = table.Name && otherNavProp.IsCollection)
 
                 let repeats = navProps |> Seq.length > 1
 
-                match otherTable with
-                | Regular(regularTable) when hereIsSingle && not repeats && thereIsSingle ->
+                match otherTable, thisNavProp, thatNavProp with
+                | Regular(regularTable), Single(thisNavProp), Single(thatNavProp) when not repeats ->
                     OneToOne {
                         Name = RelationName (navPropName.ToString());
                         Destination = EntityName (navPropName.ToString());
-                        IsNullable = mainNavProp.IsNullable;
+                        IsNullable = thisNavProp.IsNullable;
+                        KeyName = thisNavProp.FKeyName;
                         KeyType = regularTable.PrimaryKey.Type;
                         TargetTable = regularTable;
                     } |> List.singleton
-                | Regular(regularTable) when hereIsSingle && not repeats && thereIsCollection ->
+                | Regular(regularTable), Single(thisNavProp), Collection(thatNavProp) when not repeats ->
                     SingleManyToOne { 
                         Name = RelationName (navPropName.ToString()); 
                         Destination = EntityName (navPropName.ToString());
-                        IsNullable = mainNavProp.IsNullable;
+                        KeyName = thisNavProp.FKeyName;
+                        IsNullable = thisNavProp.IsNullable;
                         KeyType = regularTable.PrimaryKey.Type;
                         TargetTable = regularTable;
                     } |> List.singleton
-                | Regular(regularTable) when hereIsSingle && repeats && thereIsCollection ->
+                | Regular(regularTable), Single(thisNavProp), Collection(thatNavProp) when repeats ->
                     MultipleManyToOne {
                         Names = 
                             navProps 
                             |> Seq.map (fun navProp -> RelationName navProp.Name) 
                             |> List.ofSeq;
                         Destination = EntityName (navPropName.ToString());
-                        IsNullable = mainNavProp.IsNullable;
+                        IsNullable = thisNavProp.IsNullable;
                         KeyType = regularTable.PrimaryKey.Type;
                         TargetTable = regularTable;
                     } |> List.singleton
-                | Regular(regularTable) when hereIsCollection && thereIsSingle ->
+                | Regular(regularTable), Collection(thisNavProp), Single(thatNavProp) ->
                     OneToMany {
                         Name = RelationName (navPropName.ToString());
                         Destination = EntityName (navPropName.ToString());
@@ -119,7 +129,7 @@ type RelationParser() =
                 //    | None -> 
                 //        let availableTables = tables.Keys |> Seq.map (fun k -> k.ToString()) |> String.concat ", "
                 //        failwith $"Table '{trueNavigationProperty.Type}', required for {table.Name}, not found in tables map for join table relation. Available tables: {availableTables}"
-                | Join(joinTable) when hereIsCollection && thereIsSingle ->
+                | Join(joinTable), Collection(thisNavProp), Single(thatNavProp) ->
                     // Collection navigation property pointing to a join table (default case for a join table)
                     // Here, every navigation property of the join table must be directly mapped as a ManyToManyWithJoinTable relation
 
@@ -166,7 +176,7 @@ type RelationParser() =
                                 }
                             | _ -> failwith $"Destination table '{nav.Type}', for origin table '{table.Name}' and origin destination '{navPropName}' is not a regular table (debug: 2)")
                     relations
-                | Regular(regularTable) when hereIsCollection && thereIsCollection ->
+                | Regular(regularTable), Collection(thisNavProp), Collection(thatNavProp) ->
                     // Many to many relation without join table (collection both sides)
                     ManyToMany {
                         Name = RelationName (navPropName.ToString());
@@ -177,11 +187,7 @@ type RelationParser() =
                 | _ -> 
                     failwith 
                         $$"""
-                            Default case should not be reached: 
-                            thereIsCollection = {{thereIsCollection}},
-                            thereIsSingle = {{thereIsSingle}},
-                            hereIsCollection = {{hereIsCollection}},
-                            hereIsSingle = {{hereIsSingle}},
+                            Default case should not be reached:
                             repeats = {{repeats}},
                             IsJoinTable = {{match otherTable with | Join(_) -> true | _ -> false}},
                             table.Name = {{table.Name}},
