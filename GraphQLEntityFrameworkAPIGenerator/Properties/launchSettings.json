@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "GraphQLEntityFrameworkAPIGenerator": {
+      "commandName": "Project",
+      "commandLineArgs": ".\\GraphQLEntityFrameworkAPIGenerator\\data\\input .\\GraphQLEntityFrameworkAPIGenerator\\data\\output",
+      "workingDirectory": "C:\\projects\\whirlpool\\GraphQLEntityFrameworkAPIGenerator"
+    }
+  }
+}

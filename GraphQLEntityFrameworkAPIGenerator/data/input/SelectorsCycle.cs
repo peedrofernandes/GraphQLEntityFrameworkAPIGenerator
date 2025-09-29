@@ -17,21 +17,21 @@ public partial class SelectorsCycle
     public Guid CycleId { get; set; }
 
     [Key]
-    public byte Index { get; set; }
+    public byte Index { get; set; } // Ignore
 
-    public Guid? SelectorConditionId { get; set; }
+    public Guid? SelectorConditionId { get; set; } // Ignore
 
-    public byte? EnteringCycle { get; set; }
+    public byte? EnteringCycle { get; set; } // Ignore
 
-    public Guid? ConditionId { get; set; }
+    public Guid? ConditionId { get; set; } // Ignore
 
-    public byte Priority { get; set; }
+    public byte Priority { get; set; } // Ignore
 
-    public byte CycleTypeId { get; set; }
+    public byte CycleTypeId { get; set; } // Ignore
 
     [ForeignKey("ConditionId")]
     [InverseProperty("SelectorsCycles")]
-    public virtual Condition? Condition { get; set; }
+    public virtual Condition? Condition { get; set; } // Ignore
 
     [ForeignKey("CycleId")]
     [InverseProperty("SelectorsCycles")]
@@ -43,5 +43,5 @@ public partial class SelectorsCycle
 
     [ForeignKey("SelectorConditionId")]
     [InverseProperty("SelectorsCycles")]
-    public virtual UifunctionCondition? SelectorCondition { get; set; }
+    public virtual UifunctionCondition? SelectorCondition { get; set; } // Ignore
 }

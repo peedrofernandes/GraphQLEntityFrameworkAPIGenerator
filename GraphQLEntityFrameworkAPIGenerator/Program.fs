@@ -21,10 +21,22 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
         if not (Directory.Exists destinationPath) then
             Directory.CreateDirectory destinationPath |> ignore
             printfn $"Created destination directory: {destinationPath}"
+
+        let ignoredTables : string list = [
+            "CodeBuilder"
+            "CodeBuilderContainer"
+            "CodeBuilderContainersElement"
+            "CodeBuildersCodeBuilderContainer"
+        ]
         
         // Get all .cs files from source directory
-        let entityFiles = Directory.GetFiles(sourcePath, "*.cs", SearchOption.AllDirectories)
-        
+        let entityFiles = 
+            Directory.GetFiles(sourcePath, "*.cs", SearchOption.AllDirectories)
+            |> Array.filter (fun filePath -> 
+                ignoredTables
+                |> List.exists filePath.Contains
+                |> not)
+            
         if entityFiles.Length = 0 then
             printfn "No .cs files found in source directory"
             0

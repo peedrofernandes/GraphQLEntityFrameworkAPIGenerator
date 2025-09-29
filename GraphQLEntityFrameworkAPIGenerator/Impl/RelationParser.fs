@@ -44,7 +44,7 @@ type RelationParser() =
                     | Some table -> table
                     | None -> 
                         let availableTables = tables.Keys |> Seq.map (fun k -> k.ToString()) |> String.concat ", "
-                        failwith $"Table '{navPropName}' not found in tables map. Available tables: {availableTables}"
+                        failwith $"Table '{navPropName}', required for {table.Name}, not found in tables map. Available tables: {availableTables}"
 
                 let hereIsSingle = not mainNavProp.IsCollection
                 let thereIsSingle =
@@ -119,7 +119,7 @@ type RelationParser() =
                         | _ -> failwith $"Destination table '{trueNavigationProperty.Type}', for origin table '{table.Name}' and origin destination '{navPropName}' is not a regular table (debug: 1)"
                     | None -> 
                         let availableTables = tables.Keys |> Seq.map (fun k -> k.ToString()) |> String.concat ", "
-                        failwith $"Table '{trueNavigationProperty.Type}' not found in tables map for join table relation. Available tables: {availableTables}"
+                        failwith $"Table '{trueNavigationProperty.Type}', required for {table.Name}, not found in tables map for join table relation. Available tables: {availableTables}"
                 | Join(joinTable) when hereIsCollection && thereIsSingle ->
                     // Collection navigation property pointing to a join table
                     let trueNavigationProperty = 
@@ -145,7 +145,7 @@ type RelationParser() =
                         | _ -> failwith $"Destination table '{trueNavigationProperty.Type}', for origin table '{table.Name}' and origin destination '{navPropName}' is not a regular table (debug: 2)"
                     | None -> 
                         let availableTables = tables.Keys |> Seq.map (fun k -> k.ToString()) |> String.concat ", "
-                        failwith $"Table '{trueNavigationProperty.Type}' not found in tables map for second join table relation. Available tables: {availableTables}"
+                        failwith $"Table '{trueNavigationProperty.Type}', required for {table.Name}, not found in tables map for second join table relation. Available tables: {availableTables}"
                 | IsRegularTable(regularTable) when hereIsCollection && thereIsCollection ->
                     ManyToMany {
                         Name = RelationName (navPropName.ToString());
@@ -183,7 +183,7 @@ type RelationParser() =
 
     member private _.ParseViewTable(table: ViewTable) : Entity =
         let fields: Field list =
-            table.Properties
+            table.PrimitiveProperties
             |> Seq.map (fun p  ->
             {
                 Name = p.Name;

@@ -127,87 +127,106 @@ type TableParser() =
                 | _ -> failwith $"Unknown ID type: {typeStr}"
 
             let parseProperties (content: string) : Property list =
-                // Pattern to match properties with optional attributes (including [Key])
-                // This pattern captures: any attributes (including [Key]), property type, and property name
-                // (?:\s*\[[^\]]+\]\s*)* matches zero or more attributes like [Key], [Column("...")], etc.
-                let propertyWithAttributePattern = @"((?:\s*\[[^\]]+\]\s*)*)\s*public\s+(?!virtual\s)([?\w<>,\s]+)\s+(\w+)\s*\{\s*get;\s*set;\s*\}"
-                // Pattern for virtual navigation properties (with optional attributes)
-                let navigationPattern = @"(?:\s*\[[^\]]+\]\s*)*\s*public\s+virtual\s+([?\w<>,\s]+)\s+(\w+)\s*\{\s*get;\s*set;\s*\}"
-                
-                let navigationProperties = System.Text.RegularExpressions.Regex.Matches(content, navigationPattern)
-                let properties = System.Text.RegularExpressions.Regex.Matches(content, propertyWithAttributePattern)
+                let pattern  = @"((?:\[.*?\]\s*\n*)*)(public (virtual )?(.*?) (.*?) { get; set; })"
+        
+                // Match groups
+                // $1 = Attributes
+                // $2 = Entire property
+                // $3 = Virtual keyword
+                // $4 = Type
+                // $5 = Name
 
-                if hasMultipleKeyAttributes then
-                    printfn $"Table '{tableName}' has multiple key attributes"
+                let matches = System.Text.RegularExpressions.Regex.Matches(content, pattern);
 
-                let regularProps = 
-                    [for match' in properties do
+                let properties : Property list =
+                    matches
+                    |> Seq.choose (fun match' ->
                         let attributesStr = match'.Groups.[1].Value.Trim()
-                        let typeStr = match'.Groups.[2].Value.Trim()
-                        let propName = match'.Groups.[3].Value.Trim()
-                        let isNullable = typeStr.Contains("?")
-                        let cleanType = typeStr.Replace("?", "").Trim()
+                        let typeStr = match'.Groups.[4].Value.Trim()
+                        let propName = match'.Groups.[5].Value.Trim()
+                        let cleanType = typeStr.Replace("?", "").Replace("<", "").Replace(">", "").Replace("ICollection", "").Trim()
                         
+                        let hasVirtualKeyword = match'.Groups.[3].Value.Trim() <> ""
+                        let hasKeyAttribute = attributesStr.Contains("[Key]")
+                        let isNullable = typeStr.Contains("?")
+                        let isCollection = typeStr.Contains("ICollection")
+
                         let isPrimaryKey = 
                             match hasMultipleKeyAttributes with
-                            | true -> 
-                                propName.ToLower().Trim() = "id"
-                                    || propName.ToLower().Trim() = tableName.ToString().ToLower().Trim() + "id"
-                                    || propName.ToLower().Trim() = tableName.Pluralize().ToString().ToLower().Trim() + "id"
-                            | false -> attributesStr.Contains("[Key]")
-                        
-                        let isForeignKey = propName.ToLower().Trim().EndsWith("id") && not isPrimaryKey
-                        
-                        if isPrimaryKey then
-                            PrimaryKey { 
-                                Type = mapIdType cleanType
-                                Name = propName
-                                IsNullable = isNullable 
-                            }
+                                | false -> 
+                                    hasKeyAttribute
+                                | true -> // Use heuristic here to detrermine if it's a primary key or not
+                                    propName.ToLower().Trim() = "id" 
+                                    || propName.ToLower().Trim() = tableName.ToString().ToLower().Trim() + "id" 
+                                    || propName.ToLower().Trim() = tableName.Pluralize().ToString().ToLower().Trim() + "id"   
+
+                        let isForeignKey = 
+                            match hasMultipleKeyAttributes with
+                            | false -> 
+                                matches
+                                |> Seq.exists (fun m -> m.Groups.[1].Value.Trim().ToString().Contains $"[ForeignKey(\"{propName}\")]")
+                            | true ->
+                                hasKeyAttribute && propName.ToLower().Trim() <> "index"
+
+                        let isNavigationProperty = hasVirtualKeyword && not isPrimaryKey && not isForeignKey
+                        let isPrimitiveProperty = not hasVirtualKeyword && not isPrimaryKey && not isForeignKey
+
+                        let foreignKeyAttributeMatch = System.Text.RegularExpressions.Regex.Match(attributesStr, @"\[ForeignKey\(""(.*?)""\)\]")
+                        let foreignKeyValue = foreignKeyAttributeMatch.Groups.[1].Value.Trim()
+                        let existsCorrespondingForeignKeyWithKeyAttribute =
+                            matches
+                            |> Seq.exists (fun m -> 
+                                m.Groups.[1].Value.Trim().ToString().Contains("[Key]")
+                                && m.Groups.[5].Value.Trim().ToString().ToLower() = foreignKeyValue.ToLower())
+
+                        if hasMultipleKeyAttributes && isPrimitiveProperty then
+                            None
+                        elif hasMultipleKeyAttributes && isNavigationProperty && not existsCorrespondingForeignKeyWithKeyAttribute then
+                            None
+                        elif isPrimaryKey then
+                            Some (PrimaryKey { Type = mapIdType cleanType; Name = propName; IsNullable = isNullable })
                         elif isForeignKey then
-                            ForeignKey { 
-                                Type = mapIdType cleanType
-                                Name = propName
-                                IsNullable = isNullable 
-                            }
+                            Some (ForeignKey { Type = mapIdType cleanType; Name = propName; IsNullable = isNullable })
+                        elif isNavigationProperty then
+                            Some (Navigation { Type = TableName cleanType; Name = propName; IsNullable = isNullable; IsCollection = isCollection })
+                        elif isPrimitiveProperty then
+                            Some (Primitive { Type = mapPrimitiveType cleanType; Name = propName; IsNullable = isNullable })
                         else
-                            Primitive { 
-                                Type = mapPrimitiveType cleanType
-                                Name = propName
-                                IsNullable = isNullable 
-                            }
-                    ]
-                
-                let navProps = 
-                    [for match' in navigationProperties do
-                        let typeStr = match'.Groups.[1].Value.Trim()
-                        let propName = match'.Groups.[2].Value.Trim()
-                        let isNullable = typeStr.Contains("?")
-                        let cleanType = typeStr.Replace("?", "").Trim()
-                        
-                        // Check if it's a collection type
-                        let isCollection = cleanType.StartsWith("ICollection<") || cleanType.StartsWith("List<")
-                        let actualType = 
-                            if isCollection then
-                                // Extract type from ICollection<Type> or List<Type>
-                                let genericPattern = @"(?:ICollection|List)<(\w+)>"
-                                let genericMatch = System.Text.RegularExpressions.Regex.Match(cleanType, genericPattern)
-                                if genericMatch.Success then
-                                    genericMatch.Groups.[1].Value
-                                else
-                                    cleanType
-                            else
-                                cleanType
-                        
-                        Navigation { 
-                            Type = TableName actualType
-                            Name = propName
-                            IsNullable = isNullable
-                            IsCollection = isCollection 
-                        }
-                    ]
-                
-                regularProps @ navProps
+                            failwith $"Property '{propName}' in table '{tableName}' was not able to be classified")
+                    |> List.ofSeq
+
+                let primaryKeys = 
+                    properties
+                    |> Seq.choose (fun property ->
+                        match property with
+                        | PrimaryKey(p) -> Some p
+                        | _ -> None)
+                    |> Seq.toList
+                let foreignKeys = 
+                    properties
+                    |> Seq.choose (fun property ->
+                        match property with
+                        | ForeignKey(p) -> Some p
+                        | _ -> None)
+                    |> Seq.toList
+                let navigationPropertiesNotCollection = 
+                    properties
+                    |> Seq.choose (fun property ->
+                        match property with
+                        | Navigation(p) -> Some p
+                        | _ -> None)
+                    |> Seq.filter (fun np -> not np.IsCollection)
+                    |> Seq.toList
+
+                // Validations
+
+                if primaryKeys.Length > 1 then
+                    failwith $"Table '{tableName}' has more than 1 primary key"
+                if foreignKeys.Length <> navigationPropertiesNotCollection.Length then
+                    failwith $"Table '{tableName}' has a different number of foreign keys and navigation properties"
+                else
+
+                properties
 
             let properties = parseProperties fileContent
 
@@ -219,7 +238,7 @@ type TableParser() =
                         match property with
                         | Primitive(p) -> Some p
                         | _ -> None)
-                View { Name = tableName; Properties = primitiveProps }
+                View { Name = tableName; PrimitiveProperties = primitiveProps }
             else
                 let hasPrimaryKey =
                     properties
@@ -252,9 +271,32 @@ type TableParser() =
                         | _ -> false)
                     |> Seq.isEmpty
 
-                let isJoinTable : bool = not hasPrimaryKey || hasOnlyTwoNavigationProperties && hasOnlyTwoForeignKeys && hasNoOtherPropertiesOtherThanIndexAndPrimaryKey
+                let isJoinTable : bool = (not hasPrimaryKey) || (hasOnlyTwoNavigationProperties && hasOnlyTwoForeignKeys && hasNoOtherPropertiesOtherThanIndexAndPrimaryKey)
             
                 if isJoinTable then
-                    Join { Name = tableName; Properties = properties }
+                    let primaryKey = properties |> Seq.choose (fun property -> match property with | PrimaryKey(p) -> Some p | _ -> None) |> Seq.tryHead
+                    let foreignKeysList = properties |> Seq.choose (fun property -> match property with | ForeignKey(p) -> Some p | _ -> None) |> Seq.toList
+                    let navigationPropertiesList = properties |> Seq.choose (fun property -> match property with | Navigation(p) -> Some p | _ -> None) |> Seq.toList
+
+                    let (foreignKeyT1, foreignKeyT2) = 
+                        match foreignKeysList with
+                        | [fk1; fk2] -> (fk1, fk2)
+                        | _ -> failwith $"Join table must have exactly 2 foreign keys. isJoinTable: {isJoinTable}, hasPrimaryKey: {hasPrimaryKey}, hasOnlyTwoNavigationProperties: {hasOnlyTwoNavigationProperties}, hasOnlyTwoForeignKeys: {hasOnlyTwoForeignKeys}, hasNoOtherPropertiesOtherThanIndexAndPrimaryKey: {hasNoOtherPropertiesOtherThanIndexAndPrimaryKey}"
+                    
+                    let (navigationPropertyT1, navigationPropertyT2) = 
+                        match navigationPropertiesList with
+                        | [np1; np2] -> (np1, np2)
+                        | _ -> failwith "Join table must have exactly 2 navigation properties"
+
+                    Join { Name = tableName; PrimaryKey = primaryKey; ForeignKeyT1 = foreignKeyT1; ForeignKeyT2 = foreignKeyT2; NavigationPropertyT1 = navigationPropertyT1; NavigationPropertyT2 = navigationPropertyT2 }
                 else
-                    Regular { Name = tableName; Properties = properties }
+                    let primaryKey = properties |> Seq.choose (fun property -> match property with | PrimaryKey(p) -> Some p | _ -> None) |> Seq.tryHead
+                    let foreignKeys = properties |> Seq.choose (fun property -> match property with | ForeignKey(p) -> Some p | _ -> None) |> Seq.toList
+                    let navigationProperties = properties |> Seq.choose (fun property -> match property with | Navigation(p) -> Some p | _ -> None) |> Seq.toList
+                    let primitiveProperties = properties |> Seq.choose (fun property -> match property with | Primitive(p) -> Some p | _ -> None) |> Seq.toList
+
+                    if primaryKey.IsNone then
+                        failwith $"Regular table '{tableName}' does not have a primary key"
+                    else
+
+                    Regular { Name = tableName; PrimaryKey = primaryKey.Value; ForeignKeys = foreignKeys; NavigationProperties = navigationProperties; PrimitiveProperties = primitiveProperties }
