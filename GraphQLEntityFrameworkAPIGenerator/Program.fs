@@ -33,6 +33,9 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
         let ignoredProperties : Map<TableName, string list> =
             Map [
                 (TableName "Modifier", [ "ModifierType51"; "ModifierType61" ])
+                (TableName "PilotType", [ "MultiDriverPilotType"; "MultiSequencePilotType" ])
+                (TableName "ReadType", [ "MultiInputReadType" ])
+                //(TableName "MultiDriverPilotType", [ "PilotType" ])
             ]
         
         // Get all .cs files from source directory
