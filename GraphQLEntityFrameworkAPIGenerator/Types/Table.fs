@@ -28,57 +28,75 @@ type PrimaryKeyProperty = {
 type ForeignKeyProperty = {
     Type: IdType
     Name: string
+    NavPropName: string
     IsNullable: bool
 }
-type NavigationProperty = {
+type SingleNavigationProperty = {
+    Type: TableName
+    Name: string
+    FKeyName: string
+    IsNullable: bool
+}
+type CollectionNavigationProperty = {
     Type: TableName
     Name: string
     IsNullable: bool
-    IsCollection: bool
 }
+type NavigationProperty =
+    | Single of SingleNavigationProperty
+    | Collection of CollectionNavigationProperty
+with
+    member this.Type =
+        match this with
+        | Single(s) -> s.Type
+        | Collection(c) -> c.Type
+    member this.Name =
+        match this with
+        | Single(s) -> s.Name
+        | Collection(c) -> c.Name
+    member this.IsNullable =
+        match this with
+        | Single(s) -> s.IsNullable
+        | Collection(c) -> c.IsNullable
+
 type Property =
     | Primitive of PrimitiveProperty
     | PrimaryKey of PrimaryKeyProperty
     | ForeignKey of ForeignKeyProperty
     | Navigation of NavigationProperty
+with
+    member this.Name =
+        match this with
+        | Primitive(p) -> p.Name
+        | PrimaryKey(pk) -> pk.Name
+        | ForeignKey(fk) -> fk.Name
+        | Navigation(n) -> n.Name
 
 type RegularTable = {
     Name: TableName
     PrimaryKey: PrimaryKeyProperty
+    PrimitiveProperties: PrimitiveProperty list 
     ForeignKeys: ForeignKeyProperty list
     NavigationProperties: NavigationProperty list
-    PrimitiveProperties: PrimitiveProperty list 
 }
 with
     member this.Properties : Property list =
-        PrimaryKey this.PrimaryKey 
-            :: (this.ForeignKeys |> List.map ForeignKey) 
-            @ (this.NavigationProperties |> List.map Navigation) 
+        [PrimaryKey this.PrimaryKey]
             @ (this.PrimitiveProperties |> List.map Primitive)
-
-// type JoinTable<T1 : RegularTable, T2 : RegularTable> = {
+            @ (this.ForeignKeys |> List.map ForeignKey)
+            @ (this.NavigationProperties |> List.map Navigation)
 
 type JoinTable = {
     Name: TableName
     PrimaryKey: Option<PrimaryKeyProperty>
-    ForeignKeyT1: ForeignKeyProperty
-    ForeignKeyT2: ForeignKeyProperty
-    NavigationPropertyT1: NavigationProperty
-    NavigationPropertyT2: NavigationProperty
+    ForeignKeys: ForeignKeyProperty list
+    NavigationProperties: NavigationProperty list
 }
 with
     member this.Properties : Property list =
-        match this.PrimaryKey with
-        | Some pk -> [PrimaryKey pk; ForeignKey this.ForeignKeyT1; ForeignKey this.ForeignKeyT2; Navigation this.NavigationPropertyT1; Navigation this.NavigationPropertyT2]
-        | None -> [ForeignKey this.ForeignKeyT1; ForeignKey this.ForeignKeyT2; Navigation this.NavigationPropertyT1; Navigation this.NavigationPropertyT2]  
-
-    member this.ForeignKeys : ForeignKeyProperty list =
-        [this.ForeignKeyT1; this.ForeignKeyT2]
-
-    member this.PrimitiveProperties : PrimitiveProperty list =
-        []
-    member this.NavigationProperties : NavigationProperty list =
-        [this.NavigationPropertyT1; this.NavigationPropertyT2]
+        (match this.PrimaryKey with | Some pk -> [PrimaryKey pk] | None -> [])
+            @ (this.ForeignKeys |> List.map ForeignKey)
+            @ (this.NavigationProperties |> List.map Navigation)
 
 type ViewTable = {
     Name: TableName
@@ -102,7 +120,7 @@ with
         | Join(j) -> j.Properties
         | View(v) -> v.PrimitiveProperties |> List.map Primitive
 
-    member this.ForeignKeys =
+    member this.ForeignKeys : ForeignKeyProperty list =
         match this with
         | Regular(r) -> r.ForeignKeys
         | Join(j) -> j.ForeignKeys
@@ -111,7 +129,7 @@ with
     member this.PrimitiveProperties =
         match this with
         | Regular(r) -> r.PrimitiveProperties
-        | Join(j) -> j.PrimitiveProperties
+        | Join(_) -> []
         | View(v) -> v.PrimitiveProperties
 
     member this.NavigationProperties =

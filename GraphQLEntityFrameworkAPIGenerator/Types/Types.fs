@@ -3,6 +3,7 @@ namespace GraphQLEntityFrameworkAPIGenerator.Types
 type PrimitiveType =
     | Int
     | Byte
+    | ByteArr
     | String
     | Guid
     | Decimal
@@ -24,6 +25,7 @@ with
         match this with
         | Int -> "int"
         | Byte -> "byte"
+        | ByteArr -> "byte[]"
         | String -> "string"
         | Guid -> "Guid"
         | Decimal -> "decimal"

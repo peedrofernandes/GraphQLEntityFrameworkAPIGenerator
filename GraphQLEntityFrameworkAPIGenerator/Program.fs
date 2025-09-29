@@ -23,11 +23,17 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
             printfn $"Created destination directory: {destinationPath}"
 
         let ignoredTables : string list = [
+            "GeseCookingContext"
             "CodeBuilder"
             "CodeBuilderContainer"
             "CodeBuilderContainersElement"
             "CodeBuildersCodeBuilderContainer"
         ]
+
+        let ignoredProperties : Map<TableName, string list> =
+            Map [
+                (TableName "Modifier", [ "ModifierType51"; "ModifierType61" ])
+            ]
         
         // Get all .cs files from source directory
         let entityFiles = 
@@ -50,7 +56,7 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
                     try
                         printfn $"Parsing file: {Path.GetFileName filePath}"
                         let fileContent = File.ReadAllText filePath
-                        let table = tableParser.ParseTable fileContent
+                        let table = tableParser.ParseTable (ignoredProperties, fileContent)
                         Some (table.Name, table)
                     with
                     | ex ->
