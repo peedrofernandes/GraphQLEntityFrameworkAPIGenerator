@@ -35,11 +35,13 @@ type SingleNavigationProperty = {
     Type: TableName
     Name: string
     FKeyName: string
+    InverseName: string
     IsNullable: bool
 }
 type CollectionNavigationProperty = {
     Type: TableName
     Name: string
+    InverseName: string
     IsNullable: bool
 }
 type NavigationProperty =
@@ -54,6 +56,10 @@ with
         match this with
         | Single(s) -> s.Name
         | Collection(c) -> c.Name
+    member this.InverseName =
+        match this with
+        | Single(s) -> s.InverseName
+        | Collection(c) -> c.InverseName
     member this.IsNullable =
         match this with
         | Single(s) -> s.IsNullable

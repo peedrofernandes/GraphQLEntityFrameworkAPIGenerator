@@ -60,21 +60,21 @@ type SingleManyToOneRelation = {
 
     IsNullable: bool
 }
-type MultipleManyToOneRelation = {
-    Names: RelationName list
+// type MultipleManyToOneRelation = {
+//     Names: RelationName list
 
-    KeyType: IdType
+//     KeyType: IdType
 
-    NavProps: SingleNavigationProperty list
-    BackwardsNavProps: CollectionNavigationProperty list
+//     NavProps: SingleNavigationProperty list
+//     BackwardsNavProps: CollectionNavigationProperty list
 
-    SourceTable: RegularTable
-    TargetTable : RegularTable
+//     SourceTable: RegularTable
+//     TargetTable : RegularTable
 
-    Destination: EntityName
+//     Destination: EntityName
 
-    IsNullable: bool
-}
+//     IsNullable: bool
+// }
 type SingleOneToManyRelation = {
     Name: RelationName
 
@@ -89,20 +89,20 @@ type SingleOneToManyRelation = {
 
     IsNullable: bool
 }
-type MultipleOneToManyRelation = { // This should map to multiple OR statements and a single property.
-    Names: RelationName list
+// type MultipleOneToManyRelation = { // This should map to multiple OR statements and a single property.
+//     Names: RelationName list
 
-    KeyType: IdType
-    NavProps: CollectionNavigationProperty list
-    BackwardsNavProps: SingleNavigationProperty list
+//     KeyType: IdType
+//     NavProps: CollectionNavigationProperty list
+//     BackwardsNavProps: SingleNavigationProperty list
 
-    SourceTable: RegularTable
-    TargetTable: RegularTable
+//     SourceTable: RegularTable
+//     TargetTable: RegularTable
 
-    Destination: EntityName
+//     Destination: EntityName
 
-    IsNullable: bool
-}
+//     IsNullable: bool
+// }
 type ManyToManyRelationWithJoinTable = {
     Name: RelationName
 
@@ -136,9 +136,9 @@ type ManyToManyRelation = {
 type Relation =
     | OneToOne of OneToOneRelation
     | SingleManyToOne of SingleManyToOneRelation
-    | MultipleManyToOne of MultipleManyToOneRelation
+    // | MultipleManyToOne of MultipleManyToOneRelation
     | SingleOneToMany of SingleOneToManyRelation
-    | MultipleOneToMany of MultipleOneToManyRelation
+    // | MultipleOneToMany of MultipleOneToManyRelation
     | ManyToManyWithJoinTable of ManyToManyRelationWithJoinTable
     | ManyToMany of ManyToManyRelation
 with
@@ -146,9 +146,9 @@ with
         match this with
         | OneToOne(r) -> r.KeyType
         | SingleManyToOne(r) -> r.KeyType
-        | MultipleManyToOne(r) -> r.KeyType
+        // | MultipleManyToOne(r) -> r.KeyType
         | SingleOneToMany(r) -> r.KeyType
-        | MultipleOneToMany(r) -> r.KeyType
+        // | MultipleOneToMany(r) -> r.KeyType
         | ManyToManyWithJoinTable(r) -> r.KeyType
         | ManyToMany(r) -> r.KeyType
 

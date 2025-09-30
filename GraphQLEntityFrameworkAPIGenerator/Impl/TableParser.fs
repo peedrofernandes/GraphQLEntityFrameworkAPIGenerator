@@ -231,8 +231,16 @@ type TableParser() =
                                 ForeignKey { Type = mapIdType cleanType; Name = propName; IsNullable = isNullable; NavPropName = correspondingNavPropName.Value }
                             |> List.singleton
                         elif isNavigationProperty then
+                            let inverseName = // Get from [InverseProperty("...")]
+                                System.Text.RegularExpressions.Regex.Match(attributesStr, @"\[InverseProperty\(""(.*?)""\)\]")
+                                |> fun m -> m.Groups.[1].Value.ToString()
+
+                            if inverseName = "" then
+                                failwith $"No inverse name for {propName} navigation property"
+                            else
+
                             if isCollection then
-                                Navigation (Collection { Type = TableName cleanType; Name = propName; IsNullable = isNullable; })
+                                Navigation (Collection { Type = TableName cleanType; Name = propName; IsNullable = isNullable; InverseName = inverseName })
                                 |> List.singleton
                             else
                                 let correspondingForeignKeyName = 
@@ -242,7 +250,7 @@ type TableParser() =
                                 if correspondingForeignKeyName = "" then
                                     failwith $"No corresponding foreign key name for {propName} single navigation property"
                                 else
-                                    Navigation (Single { Type = TableName cleanType; Name = propName; IsNullable = isNullable; FKeyName = correspondingForeignKeyName })
+                                    Navigation (Single { Type = TableName cleanType; Name = propName; IsNullable = isNullable; FKeyName = correspondingForeignKeyName; InverseName = inverseName })
                                 |> List.singleton
                         elif isPrimitiveProperty then
                             Primitive { Type = mapPrimitiveType cleanType; Name = propName; IsNullable = isNullable }
