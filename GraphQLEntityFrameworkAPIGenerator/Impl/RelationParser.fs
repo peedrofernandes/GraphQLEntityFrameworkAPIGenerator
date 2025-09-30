@@ -32,17 +32,7 @@ type RelationParser() =
                 match property with
                 | Navigation(n) -> Some n
                 | _ -> None)
-            // |> Seq.groupBy (fun navigationProperty -> 
-            //     (navigationProperty.Type, 
-            //      match navigationProperty with 
-            //      | Single(_) -> "Single" 
-            //      | Collection(_) -> "Collection"))
             |> Seq.collect (fun thisNavProp ->
-                // let navPropName = navProp.Name
-                // let thisNavProp = 
-                //     match List.ofSeq navProps with
-                //     | [] -> failwith $"No navigation properties found for type '{navPropName}'"
-                //     | head :: _ -> head
                 let otherTable = 
                     match tables.TryFind thisNavProp.Type with
                     | Some table -> table
@@ -55,27 +45,6 @@ type RelationParser() =
                         match n with
                         | Some v -> v
                         | None -> failwith $"No backwards navigation property for {table.Name} table"
-                // let thatNavProp: NavigationProperty =
-                //     otherTable.NavigationProperties
-                //     |> Seq.filter (fun otherNavProp ->
-                //         otherNavProp.Type = table.Name)
-                //     |> (fun n ->
-                //         match Seq.tryHead n with
-                //             | Some v -> v
-                //             | _ -> failwith $"No backwards navigation property for {table.Name} table")
-
-                //let hereIsSingle = not mainNavProp.IsCollection
-                //let thereIsSingle =
-                //    otherTable.NavigationProperties
-                //    |> Seq.exists (fun otherNavProp ->
-                //        otherNavProp.Type = table.Name && not otherNavProp.IsCollection)
-                //let hereIsCollection = mainNavProp.IsCollection
-                //let thereIsCollection = 
-                //    otherTable.NavigationProperties
-                //    |> Seq.exists (fun otherNavProp -> 
-                //        otherNavProp.Type = table.Name && otherNavProp.IsCollection)
-
-                // let repeats = navProps |> Seq.length > 1
 
                 match otherTable, thisNavProp, thatNavProp with
                 | Regular(otherTable), Single(thisNavProp), Single(thatNavProp) ->
@@ -90,7 +59,7 @@ type RelationParser() =
                         IsNullable = thisNavProp.IsNullable;
                     } |> Seq.singleton
                 | Regular(otherTable), Single(thisNavProp), Collection(thatNavProp) ->
-                    SingleManyToOne { 
+                    ManyToOne { 
                         Name = RelationName (thisNavProp.Name.ToString()); 
                         KeyType = otherTable.PrimaryKey.Type;
                         NavProp = thisNavProp;
@@ -100,41 +69,8 @@ type RelationParser() =
                         Destination = EntityName (thisNavProp.Name.ToString());
                         IsNullable = thisNavProp.IsNullable;
                     } |> Seq.singleton
-                // | Regular(otherTable), Single(thisNavProp), Collection(thatNavProp) ->
-                //     let forwardNavigationProperties =
-                //         navProps
-                //         |> Seq.choose (fun navProp -> 
-                //             match navProp with
-                //             | Single(n) -> Some n
-                //             | _ -> None)
-                //         |> List.ofSeq
-                //     let backwardsNavigationProperties =
-                //         otherTable.NavigationProperties
-                //         |> Seq.choose (fun navProp -> 
-                //             match navProp with
-                //             | Collection(n) -> if n.Type = table.Name then Some n else None
-                //             | _ -> None)
-                //         |> List.ofSeq
-
-                //     if forwardNavigationProperties.Length <> backwardsNavigationProperties.Length then
-                //         failwith $"Forward navigation properties length ({forwardNavigationProperties.Length}) does not match backwards navigation properties length ({backwardsNavigationProperties.Length}) for table {table.Name}"
-                //     else
-
-                //     MultipleManyToOne {
-                //         Names = 
-                //             forwardNavigationProperties 
-                //             |> Seq.map (fun navProp -> RelationName navProp.Name) 
-                //             |> List.ofSeq;
-                //         KeyType = otherTable.PrimaryKey.Type;
-                //         NavProps = forwardNavigationProperties;
-                //         BackwardsNavProps = backwardsNavigationProperties;
-                //         SourceTable = table;
-                //         TargetTable = otherTable;
-                //         Destination = EntityName (navPropName.ToString());
-                //         IsNullable = thisNavProp.IsNullable;
-                //     } |> List.singleton
                 | Regular(otherTable), Collection(thisNavProp), Single(thatNavProp) ->
-                    SingleOneToMany {
+                    OneToMany {
                         Name = RelationName (thisNavProp.Name.ToString());
                         KeyType = otherTable.PrimaryKey.Type;
                         NavProp = thisNavProp;
@@ -144,93 +80,7 @@ type RelationParser() =
                         Destination = EntityName (thisNavProp.Name.ToString());
                         IsNullable = thisNavProp.IsNullable;
                     } |> Seq.singleton
-                // | Regular(otherTable), Collection(thisNavProp), Single(thatNavProp) ->
-                //     let forwardNavigationProperties =
-                //         navProps
-                //         |> Seq.choose (fun navProp -> 
-                //             match navProp with
-                //             | Collection(n) -> Some n
-                //             | _ -> None)
-                //         |> List.ofSeq
-                //     let backwardsNavigationProperties =
-                //         otherTable.NavigationProperties
-                //         |> Seq.choose (fun navProp -> 
-                //             match navProp with
-                //             | Single(n) -> if n.Type = table.Name then Some n else None
-                //             | _ -> None)
-                //         |> List.ofSeq
-                //     if forwardNavigationProperties.Length <> backwardsNavigationProperties.Length then
-                //         failwith $"Forward navigation properties length ({forwardNavigationProperties.Length}) does not match backwards navigation properties length ({backwardsNavigationProperties.Length}) for table {table.Name}"
-                //     else
-
-                //     MultipleOneToMany {
-                //         Names =
-                //             forwardNavigationProperties
-                //             |> Seq.map (fun navProp -> RelationName navProp.Name)
-                //             |> List.ofSeq
-                //         KeyType = otherTable.PrimaryKey.Type;
-                //         NavProps = forwardNavigationProperties;
-                //         BackwardsNavProps = backwardsNavigationProperties;
-                //         SourceTable = table;
-                //         TargetTable = otherTable;
-                //         Destination = EntityName (navPropName.ToString());
-                //         IsNullable = thisNavProp.IsNullable;
-                //     } |> List.singleton
-                //| Join(joinTable) when hereIsSingle && not repeats && thereIsCollection ->
-                //    // Single navigation property pointing to a join table.
-                //    let trueNavigationProperty = 
-                //        let filteredNavProps = 
-                //            joinTable.Properties
-                //            |> List.choose (function | Navigation(nav) -> Some nav | _ -> None)
-                //            |> List.filter (fun nav -> nav.Type <> table.Name)
-                //        match filteredNavProps with
-                //        | [] -> failwith $"Join table '{joinTable.Name}' has no navigation properties pointing to other tables"
-                //        | head :: _ -> head
-
-                //    match tables.TryFind trueNavigationProperty.Type with
-                //    | Some table -> 
-                //        match table with
-                //        | Regular(trueDestinationTable) ->
-                //            ManyToManyWithJoinTable {
-                //                Name = RelationName (navPropName.ToString());
-                //                JoinTable = joinTable;
-                //                Destination = EntityName (trueNavigationProperty.Type.ToString());
-                //                KeyType = trueDestinationTable.PrimaryKey.Type;
-                //                TargetTable = trueDestinationTable;
-                //            } |> List.singleton
-                //        | _ -> failwith $"Destination table '{trueNavigationProperty.Type}', for origin table '{table.Name}' and origin destination '{navPropName}' is not a regular table (debug: 1)"
-                //    | None -> 
-                //        let availableTables = tables.Keys |> Seq.map (fun k -> k.ToString()) |> String.concat ", "
-                //        failwith $"Table '{trueNavigationProperty.Type}', required for {table.Name}, not found in tables map for join table relation. Available tables: {availableTables}"
                 | Join(joinTable), Collection(thisNavProp), Single(thatNavProp) ->
-                    // Collection navigation property pointing to a join table (default case for a join table)
-                    // Here, every navigation property of the join table must be directly mapped as a ManyToManyWithJoinTable relation
-
-                    //let trueNavigationProperty = 
-                    //    let filteredNavProps = 
-                    //        joinTable.Properties
-                    //        |> List.choose (function | Navigation(nav) -> Some nav | _ -> None)
-                    //        |> List.filter (fun nav -> nav.Type <> table.Name)
-                    //    match filteredNavProps with
-                    //    | [] -> failwith $"Join table '{joinTable.Name}' has no navigation properties pointing to other tables"
-                    //    | head :: _ -> head
-
-                    //match tables.TryFind trueNavigationProperty.Type with
-                    //| Some table -> 
-                    //    match table with
-                    //    | IsRegularTable(trueDestinationTable) ->
-                    //        ManyToManyWithJoinTable {
-                    //            Name = RelationName (navPropName.ToString());
-                    //            JoinTable = joinTable;
-                    //            Destination = EntityName (trueNavigationProperty.Type.ToString());
-                    //            KeyType = trueDestinationTable.PrimaryKey.Type;
-                    //            TargetTable = trueDestinationTable;
-                    //        }
-                    //    | _ -> failwith $"Destination table '{trueNavigationProperty.Type}', for origin table '{table.Name}' and origin destination '{navPropName}' is not a regular table (debug: 2)"
-                    //| None -> 
-                    //    let availableTables = tables.Keys |> Seq.map (fun k -> k.ToString()) |> String.concat ", "
-                    //    failwith $"Table '{trueNavigationProperty.Type}', required for {table.Name}, not found in tables map for second join table relation. Available tables: {availableTables}"
-
                     let trueNavigationProperties =
                         joinTable.NavigationProperties
                         |> List.choose (fun nav -> 

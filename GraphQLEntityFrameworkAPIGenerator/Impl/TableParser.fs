@@ -166,18 +166,6 @@ type TableParser() =
                                     || propName.ToLower().Trim() = tableName.ToString().ToLower().Trim() + "id" 
                                     || propName.ToLower().Trim() = tableName.Pluralize().ToString().ToLower().Trim() + "id"   
 
-                        //let isForeignKey = 
-                        //    match hasMultipleKeyAttributes with
-                        //    | false -> 
-                        //        matches
-                        //        |> Seq.exists (fun m -> m.Groups.[1].Value.Trim().ToString().Contains $"[ForeignKey(\"{propName}\")]")
-                        //    | true ->
-                        //        hasKeyAttribute && propName.ToLower().Trim() <> "index"
-                        //let isForeignKey =
-                        //    matches
-                        //    |> Seq.exists (fun m -> 
-                        //        m.Groups.[1].Value.Trim().ToString().Contains($"[ForeignKey(\"{propName}\")]")
-                        //        && (not (m.Groups.[4].Value.Trim().ToString().Contains("ICollection"))))
                         let isForeignKey =
                             matches
                             |> Seq.exists (fun m -> 
@@ -189,18 +177,6 @@ type TableParser() =
                         let isNavigationProperty = hasVirtualKeyword && not isPrimaryKey && not isForeignKey
                         let isPrimitiveProperty = not hasVirtualKeyword && not isPrimaryKey && not isForeignKey
 
-                        //let foreignKeyAttributeMatch = System.Text.RegularExpressions.Regex.Match(attributesStr, @"\[ForeignKey\(""(.*?)""\)\]")
-                        //let foreignKeyValue = foreignKeyAttributeMatch.Groups.[1].Value.Trim()
-                        //let existsCorrespondingForeignKeyWithKeyAttribute =
-                        //    matches
-                        //    |> Seq.exists (fun m -> 
-                        //        m.Groups.[1].Value.Trim().ToString().Contains("[Key]")
-                        //        && m.Groups.[5].Value.Trim().ToString().ToLower() = foreignKeyValue.ToLower())
-
-                        //if hasMultipleKeyAttributes && isPrimitiveProperty then
-                        //    None
-                        //elif hasMultipleKeyAttributes && isNavigationProperty && not existsCorrespondingForeignKeyWithKeyAttribute then
-                        //    None
                         if isPrimaryKey && isForeignKey then
                             let primaryKey = PrimaryKey { Type = mapIdType cleanType; Name = propName; IsNullable = isNullable };
                             let foreignKey = 
@@ -266,39 +242,9 @@ type TableParser() =
                                 | PrimaryKey(p) -> Some p
                                 | _ -> None)
                             |> Seq.toList
-                        //let foreignKeys = 
-                        //    props
-                        //    |> Seq.choose (fun property ->
-                        //        match property with
-                        //        | ForeignKey(p) -> Some p
-                        //        | _ -> None)
-                        //    |> Seq.toList
-                        //let singleNavigationProperties = 
-                        //    props
-                        //    |> Seq.choose (fun property ->
-                        //        match property with
-                        //        | Navigation(p) -> Some p
-                        //        | _ -> None)
-                        //    |> Seq.choose (fun np ->
-                        //        match np with
-                        //            | Single(s) -> Some s
-                        //            | _ -> None)
-                        //    |> Seq.toList
 
                         if primaryKeys.Length > 1 then
                             failwith $"Table '{tableName}' has more than 1 primary key"
-                        //if foreignKeys.Length <> singleNavigationProperties.Length then
-                        //    let missingForeignKeys = 
-                        //        singleNavigationProperties
-                        //        |> Seq.filter (fun n -> foreignKeys |> Seq.exists (fun f -> f.Name = n.FKeyName) |> not)
-                        //        |> Seq.map (fun n -> n.Name.ToString())
-                        //        |> String.concat (", ")
-                        //    let missingNavigationProperties =
-                        //        foreignKeys
-                        //        |> Seq.filter (fun f -> singleNavigationProperties |> Seq.exists (fun n -> n.Name = f.NavPropName) |> not)
-                        //        |> Seq.map (fun f -> f.Name.ToString())
-                        //        |> String.concat (", ")
-                        //    failwith $"Table '{tableName}' has a different number of foreign keys ({foreignKeys.Length}) and (non-collection) navigation properties ({singleNavigationProperties.Length}). Missing foreign keys: [{missingForeignKeys}], missing navigation properties: [{missingNavigationProperties}]"
                         else
 
                         props)

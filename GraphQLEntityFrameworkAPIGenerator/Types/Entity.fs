@@ -45,7 +45,7 @@ type OneToOneRelation = {
 
     IsNullable: bool
 }
-type SingleManyToOneRelation = {
+type ManyToOneRelation = {
     Name: RelationName
 
     KeyType: IdType
@@ -75,7 +75,7 @@ type SingleManyToOneRelation = {
 
 //     IsNullable: bool
 // }
-type SingleOneToManyRelation = {
+type OneToManyRelation = {
     Name: RelationName
 
     KeyType: IdType
@@ -135,9 +135,9 @@ type ManyToManyRelation = {
 
 type Relation =
     | OneToOne of OneToOneRelation
-    | SingleManyToOne of SingleManyToOneRelation
+    | ManyToOne of ManyToOneRelation
     // | MultipleManyToOne of MultipleManyToOneRelation
-    | SingleOneToMany of SingleOneToManyRelation
+    | OneToMany of OneToManyRelation
     // | MultipleOneToMany of MultipleOneToManyRelation
     | ManyToManyWithJoinTable of ManyToManyRelationWithJoinTable
     | ManyToMany of ManyToManyRelation
@@ -145,9 +145,9 @@ with
     member this.KeyType : IdType =
         match this with
         | OneToOne(r) -> r.KeyType
-        | SingleManyToOne(r) -> r.KeyType
+        | ManyToOne(r) -> r.KeyType
         // | MultipleManyToOne(r) -> r.KeyType
-        | SingleOneToMany(r) -> r.KeyType
+        | OneToMany(r) -> r.KeyType
         // | MultipleOneToMany(r) -> r.KeyType
         | ManyToManyWithJoinTable(r) -> r.KeyType
         | ManyToMany(r) -> r.KeyType
