@@ -32,8 +32,12 @@ type RelationParser() =
                 match property with
                 | Navigation(n) -> Some n
                 | _ -> None)
-            |> Seq.groupBy (fun navigationProperty -> navigationProperty.Type)
-            |> Seq.collect (fun (navPropName, navProps) ->
+            |> Seq.groupBy (fun navigationProperty -> 
+                (navigationProperty.Type, 
+                 match navigationProperty with 
+                 | Single(_) -> "Single" 
+                 | Collection(_) -> "Collection"))
+            |> Seq.collect (fun ((navPropName, _), navProps) ->
                 let thisNavProp = 
                     match List.ofSeq navProps with
                     | [] -> failwith $"No navigation properties found for type '{navPropName}'"
@@ -90,26 +94,33 @@ type RelationParser() =
                         IsNullable = thisNavProp.IsNullable;
                     } |> List.singleton
                 | Regular(otherTable), Single(thisNavProp), Collection(thatNavProp) when repeats ->
+                    let forwardNavigationProperties =
+                        navProps
+                        |> Seq.choose (fun navProp -> 
+                            match navProp with
+                            | Single(n) -> Some n
+                            | _ -> None)
+                        |> List.ofSeq
+                    let backwardsNavigationProperties =
+                        otherTable.NavigationProperties
+                        |> Seq.choose (fun navProp -> 
+                            match navProp with
+                            | Collection(n) -> if n.Type = table.Name then Some n else None
+                            | _ -> None)
+                        |> List.ofSeq
+
+                    if forwardNavigationProperties.Length <> backwardsNavigationProperties.Length then
+                        failwith $"Forward navigation properties length ({forwardNavigationProperties.Length}) does not match backwards navigation properties length ({backwardsNavigationProperties.Length}) for table {table.Name}"
+                    else
+
                     MultipleManyToOne {
                         Names = 
-                            navProps 
+                            forwardNavigationProperties 
                             |> Seq.map (fun navProp -> RelationName navProp.Name) 
                             |> List.ofSeq;
                         KeyType = otherTable.PrimaryKey.Type;
-                        NavProps =
-                            navProps
-                            |> Seq.choose (fun navProp -> 
-                                match navProp with
-                                | Single(n) -> Some n
-                                | _ -> None)
-                            |> List.ofSeq
-                        BackwardsNavProps =
-                            otherTable.NavigationProperties
-                            |> Seq.choose (fun navProp -> 
-                                match navProp with
-                                | Collection(n) -> if n.Type = thisNavProp.Type then Some n else None
-                                | _ -> None)
-                            |> List.ofSeq
+                        NavProps = forwardNavigationProperties;
+                        BackwardsNavProps = backwardsNavigationProperties;
                         SourceTable = table;
                         TargetTable = otherTable;
                         Destination = EntityName (navPropName.ToString());
@@ -127,26 +138,32 @@ type RelationParser() =
                         IsNullable = thisNavProp.IsNullable;
                     } |> List.singleton
                 | Regular(otherTable), Collection(thisNavProp), Single(thatNavProp) when repeats ->
+                    let forwardNavigationProperties =
+                        navProps
+                        |> Seq.choose (fun navProp -> 
+                            match navProp with
+                            | Collection(n) -> Some n
+                            | _ -> None)
+                        |> List.ofSeq
+                    let backwardsNavigationProperties =
+                        otherTable.NavigationProperties
+                        |> Seq.choose (fun navProp -> 
+                            match navProp with
+                            | Single(n) -> if n.Type = table.Name then Some n else None
+                            | _ -> None)
+                        |> List.ofSeq
+                    if forwardNavigationProperties.Length <> backwardsNavigationProperties.Length then
+                        failwith $"Forward navigation properties length ({forwardNavigationProperties.Length}) does not match backwards navigation properties length ({backwardsNavigationProperties.Length}) for table {table.Name}"
+                    else
+
                     MultipleOneToMany {
                         Names =
-                            navProps
+                            forwardNavigationProperties
                             |> Seq.map (fun navProp -> RelationName navProp.Name)
                             |> List.ofSeq
                         KeyType = otherTable.PrimaryKey.Type;
-                        NavProps =
-                            navProps
-                            |> Seq.choose (fun navProp -> 
-                                match navProp with
-                                | Collection(n) -> Some n
-                                | _ -> None)
-                            |> List.ofSeq
-                        BackwardsNavProps =
-                            otherTable.NavigationProperties
-                            |> Seq.choose (fun navProp -> 
-                                match navProp with
-                                | Single(n) -> if n.Type = thisNavProp.Type then Some n else None
-                                | _ -> None)
-                            |> List.ofSeq
+                        NavProps = forwardNavigationProperties;
+                        BackwardsNavProps = backwardsNavigationProperties;
                         SourceTable = table;
                         TargetTable = otherTable;
                         Destination = EntityName (navPropName.ToString());

@@ -63,4 +63,9 @@ with
 type Type =
     | Primitive of PrimitiveType
     | Id of IdType
+with
+    override this.ToString() : string =
+        match this with
+        | Primitive p -> p.ToString()
+        | Id i -> i.ToString()
 

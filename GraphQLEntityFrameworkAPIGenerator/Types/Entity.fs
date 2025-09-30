@@ -5,7 +5,7 @@ type PluralizedEntityName = PluralizedEntityName of string
     with
         override this.ToString() : string =
             let (PluralizedEntityName name) = this
-            name
+            name.ToString()
 type EntityName = EntityName of string
     with
         member this.Pluralize() : PluralizedEntityName = 
@@ -13,13 +13,13 @@ type EntityName = EntityName of string
             PluralizedEntityName (name + "s")
         override this.ToString() : string =
             let (EntityName name) = this
-            name
+            name.ToString()
 
 type RelationName = RelationName of string
     with
         override this.ToString() : string =
             let (RelationName name) = this
-            name
+            name.ToString()
 
 // For each table (excluding join tables):
 //     For each navigation property;

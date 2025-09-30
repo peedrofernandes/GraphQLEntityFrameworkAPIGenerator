@@ -4,7 +4,7 @@ type PluralizedTableName = PluralizedTableName of string
 with
     override this.ToString() : string =
         let (PluralizedTableName name) = this
-        name
+        name.ToString()
 
 type TableName = TableName of string
 with
@@ -13,7 +13,7 @@ with
         PluralizedTableName (name + "s")
     override this.ToString() : string =
         let (TableName name) = this
-        name
+        name.ToString()
 
 type PrimitiveProperty = {
     Type: PrimitiveType

@@ -42,6 +42,7 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
         let ignoredProperties : Map<TableName, string list> =
             Map [
                 (TableName "Modifier", [ "ModifierType51"; "ModifierType61" ])
+                (TableName "ModifierType", [ "ModifierModifierType51s"; "ModifierModifierType61s" ])
                 (TableName "PilotType", [ "MultiDriverPilotType"; "MultiSequencePilotType" ])
                 (TableName "ReadType", [ "MultiInputReadType" ])
                 (TableName "PrmPilotMultiSequence", [ "MultiSequencePilotType" ])
