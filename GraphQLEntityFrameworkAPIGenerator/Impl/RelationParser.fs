@@ -72,17 +72,17 @@ type RelationParser() =
                         Name = RelationName (navPropName.ToString());
                         Destination = EntityName (navPropName.ToString());
                         IsNullable = thisNavProp.IsNullable;
-                        KeyName = thisNavProp.FKeyName;
                         KeyType = regularTable.PrimaryKey.Type;
+                        SourceTable = table;
                         TargetTable = regularTable;
                     } |> List.singleton
                 | Regular(regularTable), Single(thisNavProp), Collection(thatNavProp) when not repeats ->
                     SingleManyToOne { 
                         Name = RelationName (navPropName.ToString()); 
                         Destination = EntityName (navPropName.ToString());
-                        KeyName = thisNavProp.FKeyName;
                         IsNullable = thisNavProp.IsNullable;
                         KeyType = regularTable.PrimaryKey.Type;
+                        SourceTable = table;
                         TargetTable = regularTable;
                     } |> List.singleton
                 | Regular(regularTable), Single(thisNavProp), Collection(thatNavProp) when repeats ->
@@ -94,6 +94,7 @@ type RelationParser() =
                         Destination = EntityName (navPropName.ToString());
                         IsNullable = thisNavProp.IsNullable;
                         KeyType = regularTable.PrimaryKey.Type;
+                        SourceTable = table;
                         TargetTable = regularTable;
                     } |> List.singleton
                 | Regular(regularTable), Collection(thisNavProp), Single(thatNavProp) ->
@@ -101,7 +102,9 @@ type RelationParser() =
                         Name = RelationName (navPropName.ToString());
                         Destination = EntityName (navPropName.ToString());
                         KeyType = regularTable.PrimaryKey.Type;
+                        SourceTable = table;
                         TargetTable = regularTable;
+                        IsNullable = thisNavProp.IsNullable;
                     } |> List.singleton
                 //| Join(joinTable) when hereIsSingle && not repeats && thereIsCollection ->
                 //    // Single navigation property pointing to a join table.
@@ -169,10 +172,12 @@ type RelationParser() =
                             | Some (Regular(destination)) ->
                                 ManyToManyWithJoinTable {
                                     Name = RelationName (nav.Name.ToString());
-                                    JoinTable = joinTable;
                                     Destination = EntityName (nav.Type.ToString());
                                     KeyType = destination.PrimaryKey.Type;
+                                    SourceTable = table;
+                                    JoinTable = joinTable;
                                     TargetTable = destination;
+                                    IsNullable = thisNavProp.IsNullable;
                                 }
                             | _ -> failwith $"Destination table '{nav.Type}', for origin table '{table.Name}' and origin destination '{navPropName}' is not a regular table (debug: 2)")
                     relations
@@ -182,6 +187,7 @@ type RelationParser() =
                         Name = RelationName (navPropName.ToString());
                         Destination = EntityName (navPropName.ToString());
                         KeyType = regularTable.PrimaryKey.Type;
+                        SourceTable = table;
                         TargetTable = regularTable;
                     } |> List.singleton
                 | _ -> 

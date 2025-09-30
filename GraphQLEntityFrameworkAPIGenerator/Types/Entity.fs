@@ -31,46 +31,90 @@ type RelationName = RelationName of string
 //         4. If here is a collection and there is a collection, then it's a many-to-many relation;
 
 type OneToOneRelation = {
-    KeyName: string
     Name: RelationName
-    TargetTable : RegularTable
-    Destination: EntityName
-    IsNullable: bool
+
     KeyType: IdType
+    NavProp: SingleNavigationProperty
+    BackwardsNavProp: SingleNavigationProperty
+    //ForeignKeyName: string
+    //BackwardsForeignKeyName: string
+    
+    SourceTable: RegularTable
+    TargetTable : RegularTable
+
+    Destination: EntityName
+
+    IsNullable: bool
 }
 type SingleManyToOneRelation = {
-    KeyName: string
     Name: RelationName
-    TargetTable : RegularTable
-    Destination: EntityName
-    IsNullable: bool
+
     KeyType: IdType
+    NavProp: SingleNavigationProperty
+    BackwardsNavProp: CollectionNavigationProperty
+    //ForeignKeyName: string
+
+    SourceTable: RegularTable
+    TargetTable: RegularTable
+
+    Destination: EntityName
+
+    IsNullable: bool
 }
 type MultipleManyToOneRelation = {
     Names: RelationName list
-    TargetTable : RegularTable
-    Destination: EntityName
-    IsNullable: bool
+
     KeyType: IdType
+    NavProps: SingleNavigationProperty list
+    BackwardsNavigationProps: -
+
+    SourceTable: RegularTable
+    TargetTable : RegularTable
+
+    Destination: EntityName
+
+    IsNullable: bool
 }
 type OneToManyRelation = {
     Name: RelationName
-    TargetTable : RegularTable
-    Destination: EntityName
+
     KeyType: IdType
+    NavProp: CollectionNavigationProperty
+    //BackwardsForeignKeyName: string
+
+    SourceTable: RegularTable
+    TargetTable : RegularTable
+
+    Destination: EntityName
+
+    IsNullable: bool
 }
 type ManyToManyRelationWithJoinTable = {
     Name: RelationName
+
+    KeyType: IdType
+    NavProp: CollectionNavigationProperty
+    //BackwardsForeignKeyName: string
+    //BackwardsNavigationProperty: string
+
+    SourceTable: RegularTable
     JoinTable: JoinTable
     TargetTable : RegularTable
+
     Destination: EntityName
-    KeyType: IdType
+
+    IsNullable: bool
 }
 type ManyToManyRelation = {
     Name: RelationName
-    TargetTable : RegularTable
-    Destination: EntityName
+
     KeyType: IdType
+    NavProp: CollectionNavigationProperty
+
+    SourceTable: RegularTable
+    TargetTable : RegularTable
+
+    Destination: EntityName
 }
 
 type Relation =

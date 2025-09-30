@@ -188,7 +188,11 @@ type ContentGenerator() =
             |> String.concat ",\n\t\t\t\t\t\t\t\t\t"
 
         match relation with
-        | OneToOne(r) -> 
+        | OneToOne(r) ->
+            let backwardsForeignKey = 
+                r.TargetTable.ForeignKeys
+                |> Seq.tryFind (fun fk -> fk.Name = r.NavProp.FKeyName)
+            
             $$"""
             Field<{{r.Destination}}GraphType, {{r.Destination}}>("{{r.Destination.Pluralize()}}") // Debug - OneToOne(r) case
                 .ResolveAsync(context => 
@@ -209,7 +213,7 @@ type ContentGenerator() =
                             return data.ToLookup(x => x.Key, x => x.Value);
                         });
 
-                    return loader.LoadAsync(context.Source.{{r.KeyName}});
+                    return loader.LoadAsync(context.Source.{{r.ForeignKeyName}});
                 });
             """
         | SingleManyToOne(r) -> 
@@ -235,7 +239,7 @@ type ContentGenerator() =
                             return data.ToLookup(x => x.Key, x => x.Value);
                         });
 
-                    return loader.LoadAsync(context.Source.{{r.KeyName}});
+                    return loader.LoadAsync(context.Source.{{r.ForeignKeyName}});
                 });
             """
         | MultipleManyToOne(r) -> 
@@ -269,7 +273,7 @@ type ContentGenerator() =
             """
         | OneToMany(r) -> 
             $$"""
-            Field<{{r.Destination.ToString()}}GraphType, {{r.Destination.ToString()}}>("{{r.Destination.Pluralize().ToString()}}") // Debug - OneToMany(r) case
+            Field<ListGraphType<{{r.Destination.ToString()}}GraphType>, IEnumerable<{{r.Destination.ToString()}}>>("{{r.Destination.Pluralize().ToString()}}") // Debug - OneToMany(r) case
                 .ResolveAsync(context => 
                 {
                     var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.KeyType.ToString()}}, {{r.Destination}}>(
@@ -277,29 +281,32 @@ type ContentGenerator() =
                         async ids => 
                         {
                             var data = await dbContext.{{r.Destination.Pluralize().ToString()}}
-                                .Where(x => x.{{r.Name.ToString()}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{r.Name.ToString()}}))
+                                .Where(x => x.{{r.BackwardsForeignKeyName.ToString()}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{backwardsForeignKey.ToString()}}))
                                 .Select(x => new
                                 {
-                                    Key = ({{r.KeyType.ToString()}})x.{{r.Name.ToString()}}!,
+                                    Key = ({{r.KeyType.ToString()}})x.{{r.BackwardsForeignKeyName.ToString()}}!,
                                     Value = x,
                                 })
                                 .ToListAsync();
+
+                            return data.ToLookup(x => x.Key, x => x.Value);
                         });
 
-                    return loader.LoadAsync(context.Source.{{r.Destination.Pluralize().ToString()}});
+                    return loader.LoadAsync(context.Source.{{r.SourceTable.PrimaryKey.Name.ToString()}});
                 });
             """
         | ManyToManyWithJoinTable(r) -> 
-            let destinationForeignKeyOnJoinTable = 
-                let filteredFks = r.JoinTable.ForeignKeys |> List.filter (fun fk -> fk.Type = r.KeyType)
-                match filteredFks with
-                | [] -> failwith $$"""No foreign keys found on join table '{{r.JoinTable.Name}}' with type '{{r.KeyType}}'. Available foreign keys: {{r.JoinTable.ForeignKeys |> List.map (fun fk -> $"{fk.Name}:{fk.Type}") |> String.concat ", "}}"""
-                | head :: _ -> head.Name
-            let destinationNavigationPropertyOnJoinTable =
-                let filteredNavProps = r.JoinTable.NavigationProperties |> List.filter (fun nav -> nav.Type.ToString() = r.Destination.ToString())
-                match filteredNavProps with
-                | [] -> failwith $$"""No navigation properties found on join table '{{r.JoinTable.Name}}' pointing to '{{r.Destination}}'. Available navigation properties: {{r.JoinTable.NavigationProperties |> List.map (fun nav -> $"{nav.Name}:{nav.Type}") |> String.concat ", "}}"""
-                | head :: _ -> head.Name
+            //let primaryKey = r.SourceTable.PrimaryKey.Name;
+            //let destinationForeignKey = 
+            //    let filteredFks = r.JoinTable.ForeignKeys |> List.filter (fun fk -> fk.Type = r.KeyType)
+            //    match filteredFks with
+            //    | [] -> failwith $$"""No foreign keys found on join table '{{r.JoinTable.Name}}' with type '{{r.KeyType}}'. Available foreign keys: {{r.JoinTable.ForeignKeys |> List.map (fun fk -> $"{fk.Name}:{fk.Type}") |> String.concat ", "}}"""
+            //    | head :: _ -> head.Name
+            //let destinationNavigationProperty =
+            //    let filteredNavProps = r.JoinTable.NavigationProperties |> List.filter (fun nav -> nav.Type.ToString() = r.Destination.ToString())
+            //    match filteredNavProps with
+            //    | [] -> failwith $$"""No navigation properties found on join table '{{r.JoinTable.Name}}' pointing to '{{r.Destination}}'. Available navigation properties: {{r.JoinTable.NavigationProperties |> List.map (fun nav -> $"{nav.Name}:{nav.Type}") |> String.concat ", "}}"""
+            //    | head :: _ -> head.Name
             
             $$"""
             Field<ListGraphType<{{r.Destination.ToString()}}GraphType>, IEnumerable<{{r.Destination.ToString()}}>>("{{r.Destination.Pluralize().ToString()}}") // Debug - ManyToManyWithJoinTable(r) case
@@ -310,18 +317,18 @@ type ContentGenerator() =
                         async ids => 
                         {
                             var data = await dbContext.{{r.JoinTable.Name.Pluralize().ToString()}}
-                                .Where(x => x.{{destinationForeignKeyOnJoinTable}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{destinationForeignKeyOnJoinTable}}))
+                                .Where(x => x.{{r.BackwardsForeignKeyName.ToString()}} != null && ids.Contains(({{r.KeyType.ToString()}})x.{{r.BackwardsForeignKeyName}}))
                                 .Select(x => new
                                 {
-                                    Key = ({{r.KeyType.ToString()}})x.{{destinationForeignKeyOnJoinTable}}!,
-                                    Value = x.{{destinationNavigationPropertyOnJoinTable}},
+                                    Key = ({{r.KeyType.ToString()}})x.{{r.BackwardsForeignKeyName.ToString()}}!,
+                                    Value = x.{{r.}},
                                 })
                                 .ToListAsync();
 
                             return data.ToLookup(x => x.Key, x => x.Value);
                         });
 
-                    return loader.LoadAsync(context.Source.{{r.Destination.Pluralize()}});
+                    return loader.LoadAsync(context.Source.{{primaryKey.ToString()}});
                 });
             """
         | ManyToMany(r) -> 
