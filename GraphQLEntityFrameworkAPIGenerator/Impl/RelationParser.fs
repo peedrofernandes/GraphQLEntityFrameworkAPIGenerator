@@ -67,43 +67,89 @@ type RelationParser() =
                 let repeats = navProps |> Seq.length > 1
 
                 match otherTable, thisNavProp, thatNavProp with
-                | Regular(regularTable), Single(thisNavProp), Single(thatNavProp) when not repeats ->
+                | Regular(otherTable), Single(thisNavProp), Single(thatNavProp) when not repeats ->
                     OneToOne {
                         Name = RelationName (navPropName.ToString());
+                        KeyType = otherTable.PrimaryKey.Type;
+                        NavProp = thisNavProp;
+                        BackwardsNavProp = thatNavProp;
+                        SourceTable = table;
+                        TargetTable = otherTable;
                         Destination = EntityName (navPropName.ToString());
                         IsNullable = thisNavProp.IsNullable;
-                        KeyType = regularTable.PrimaryKey.Type;
-                        SourceTable = table;
-                        TargetTable = regularTable;
                     } |> List.singleton
-                | Regular(regularTable), Single(thisNavProp), Collection(thatNavProp) when not repeats ->
+                | Regular(otherTable), Single(thisNavProp), Collection(thatNavProp) when not repeats ->
                     SingleManyToOne { 
                         Name = RelationName (navPropName.ToString()); 
+                        KeyType = otherTable.PrimaryKey.Type;
+                        NavProp = thisNavProp;
+                        BackwardsNavProp = thatNavProp;
+                        SourceTable = table;
+                        TargetTable = otherTable;
                         Destination = EntityName (navPropName.ToString());
                         IsNullable = thisNavProp.IsNullable;
-                        KeyType = regularTable.PrimaryKey.Type;
-                        SourceTable = table;
-                        TargetTable = regularTable;
                     } |> List.singleton
-                | Regular(regularTable), Single(thisNavProp), Collection(thatNavProp) when repeats ->
+                | Regular(otherTable), Single(thisNavProp), Collection(thatNavProp) when repeats ->
                     MultipleManyToOne {
                         Names = 
                             navProps 
                             |> Seq.map (fun navProp -> RelationName navProp.Name) 
                             |> List.ofSeq;
+                        KeyType = otherTable.PrimaryKey.Type;
+                        NavProps =
+                            navProps
+                            |> Seq.choose (fun navProp -> 
+                                match navProp with
+                                | Single(n) -> Some n
+                                | _ -> None)
+                            |> List.ofSeq
+                        BackwardsNavProps =
+                            otherTable.NavigationProperties
+                            |> Seq.choose (fun navProp -> 
+                                match navProp with
+                                | Collection(n) -> if n.Type = thisNavProp.Type then Some n else None
+                                | _ -> None)
+                            |> List.ofSeq
+                        SourceTable = table;
+                        TargetTable = otherTable;
                         Destination = EntityName (navPropName.ToString());
                         IsNullable = thisNavProp.IsNullable;
-                        KeyType = regularTable.PrimaryKey.Type;
-                        SourceTable = table;
-                        TargetTable = regularTable;
                     } |> List.singleton
-                | Regular(regularTable), Collection(thisNavProp), Single(thatNavProp) ->
-                    OneToMany {
+                | Regular(otherTable), Collection(thisNavProp), Single(thatNavProp) when not repeats ->
+                    SingleOneToMany {
                         Name = RelationName (navPropName.ToString());
-                        Destination = EntityName (navPropName.ToString());
-                        KeyType = regularTable.PrimaryKey.Type;
+                        KeyType = otherTable.PrimaryKey.Type;
+                        NavProp = thisNavProp;
+                        BackwardsNavProp = thatNavProp;
                         SourceTable = table;
-                        TargetTable = regularTable;
+                        TargetTable = otherTable;
+                        Destination = EntityName (navPropName.ToString());
+                        IsNullable = thisNavProp.IsNullable;
+                    } |> List.singleton
+                | Regular(otherTable), Collection(thisNavProp), Single(thatNavProp) when repeats ->
+                    MultipleOneToMany {
+                        Names =
+                            navProps
+                            |> Seq.map (fun navProp -> RelationName navProp.Name)
+                            |> List.ofSeq
+                        KeyType = otherTable.PrimaryKey.Type;
+                        NavProps =
+                            navProps
+                            |> Seq.choose (fun navProp -> 
+                                match navProp with
+                                | Collection(n) -> Some n
+                                | _ -> None)
+                            |> List.ofSeq
+                        BackwardsNavProps =
+                            otherTable.NavigationProperties
+                            |> Seq.choose (fun navProp -> 
+                                match navProp with
+                                | Single(n) -> if n.Type = thisNavProp.Type then Some n else None
+                                | _ -> None)
+                            |> List.ofSeq
+                        SourceTable = table;
+                        TargetTable = otherTable;
+                        Destination = EntityName (navPropName.ToString());
                         IsNullable = thisNavProp.IsNullable;
                     } |> List.singleton
                 //| Join(joinTable) when hereIsSingle && not repeats && thereIsCollection ->
@@ -163,7 +209,10 @@ type RelationParser() =
 
                     let trueNavigationProperties =
                         joinTable.NavigationProperties
-                        |> List.filter (fun nav -> nav.Type <> table.Name)
+                        |> List.choose (fun nav -> 
+                            match nav with
+                            | Single(n) -> if nav.Type <> table.Name then Some n else None
+                            | _ -> None)
 
                     let relations =
                         trueNavigationProperties
@@ -172,21 +221,26 @@ type RelationParser() =
                             | Some (Regular(destination)) ->
                                 ManyToManyWithJoinTable {
                                     Name = RelationName (nav.Name.ToString());
-                                    Destination = EntityName (nav.Type.ToString());
                                     KeyType = destination.PrimaryKey.Type;
+                                    NavProp = thisNavProp;
+                                    JoinTableNavProp = nav;
+                                    JoinTableBackwardsNavProp = thatNavProp;
                                     SourceTable = table;
                                     JoinTable = joinTable;
                                     TargetTable = destination;
+                                    Destination = EntityName (nav.Type.ToString());
                                     IsNullable = thisNavProp.IsNullable;
                                 }
                             | _ -> failwith $"Destination table '{nav.Type}', for origin table '{table.Name}' and origin destination '{navPropName}' is not a regular table (debug: 2)")
                     relations
-                | Regular(regularTable), Collection(thisNavProp), Collection(thatNavProp) ->
+                | Regular(regularTable), Collection(thisNavProp), Collection(thatNavProp) when not repeats ->
                     // Many to many relation without join table (collection both sides)
                     ManyToMany {
                         Name = RelationName (navPropName.ToString());
-                        Destination = EntityName (navPropName.ToString());
                         KeyType = regularTable.PrimaryKey.Type;
+                        NavProp = thisNavProp;
+                        BackwardsNavProp = thatNavProp;
+                        Destination = EntityName (navPropName.ToString());
                         SourceTable = table;
                         TargetTable = regularTable;
                     } |> List.singleton

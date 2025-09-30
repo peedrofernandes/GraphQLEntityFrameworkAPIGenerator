@@ -34,10 +34,9 @@ type OneToOneRelation = {
     Name: RelationName
 
     KeyType: IdType
+
     NavProp: SingleNavigationProperty
     BackwardsNavProp: SingleNavigationProperty
-    //ForeignKeyName: string
-    //BackwardsForeignKeyName: string
     
     SourceTable: RegularTable
     TargetTable : RegularTable
@@ -50,9 +49,9 @@ type SingleManyToOneRelation = {
     Name: RelationName
 
     KeyType: IdType
+
     NavProp: SingleNavigationProperty
     BackwardsNavProp: CollectionNavigationProperty
-    //ForeignKeyName: string
 
     SourceTable: RegularTable
     TargetTable: RegularTable
@@ -65,8 +64,9 @@ type MultipleManyToOneRelation = {
     Names: RelationName list
 
     KeyType: IdType
+
     NavProps: SingleNavigationProperty list
-    BackwardsNavigationProps: -
+    BackwardsNavProps: CollectionNavigationProperty list
 
     SourceTable: RegularTable
     TargetTable : RegularTable
@@ -75,15 +75,29 @@ type MultipleManyToOneRelation = {
 
     IsNullable: bool
 }
-type OneToManyRelation = {
+type SingleOneToManyRelation = {
     Name: RelationName
 
     KeyType: IdType
     NavProp: CollectionNavigationProperty
-    //BackwardsForeignKeyName: string
+    BackwardsNavProp: SingleNavigationProperty
 
     SourceTable: RegularTable
     TargetTable : RegularTable
+
+    Destination: EntityName
+
+    IsNullable: bool
+}
+type MultipleOneToManyRelation = { // This should map to multiple OR statements and a single property.
+    Names: RelationName list
+
+    KeyType: IdType
+    NavProps: CollectionNavigationProperty list
+    BackwardsNavProps: SingleNavigationProperty list
+
+    SourceTable: RegularTable
+    TargetTable: RegularTable
 
     Destination: EntityName
 
@@ -94,8 +108,9 @@ type ManyToManyRelationWithJoinTable = {
 
     KeyType: IdType
     NavProp: CollectionNavigationProperty
-    //BackwardsForeignKeyName: string
-    //BackwardsNavigationProperty: string
+    JoinTableBackwardsNavProp: SingleNavigationProperty
+    JoinTableNavProp: SingleNavigationProperty
+    //TargetTableBackwardsNavProp: CollectionNavigationProperty
 
     SourceTable: RegularTable
     JoinTable: JoinTable
@@ -110,6 +125,7 @@ type ManyToManyRelation = {
 
     KeyType: IdType
     NavProp: CollectionNavigationProperty
+    BackwardsNavProp: CollectionNavigationProperty
 
     SourceTable: RegularTable
     TargetTable : RegularTable
@@ -121,7 +137,8 @@ type Relation =
     | OneToOne of OneToOneRelation
     | SingleManyToOne of SingleManyToOneRelation
     | MultipleManyToOne of MultipleManyToOneRelation
-    | OneToMany of OneToManyRelation
+    | SingleOneToMany of SingleOneToManyRelation
+    | MultipleOneToMany of MultipleOneToManyRelation
     | ManyToManyWithJoinTable of ManyToManyRelationWithJoinTable
     | ManyToMany of ManyToManyRelation
 with
@@ -130,7 +147,8 @@ with
         | OneToOne(r) -> r.KeyType
         | SingleManyToOne(r) -> r.KeyType
         | MultipleManyToOne(r) -> r.KeyType
-        | OneToMany(r) -> r.KeyType
+        | SingleOneToMany(r) -> r.KeyType
+        | MultipleOneToMany(r) -> r.KeyType
         | ManyToManyWithJoinTable(r) -> r.KeyType
         | ManyToMany(r) -> r.KeyType
 

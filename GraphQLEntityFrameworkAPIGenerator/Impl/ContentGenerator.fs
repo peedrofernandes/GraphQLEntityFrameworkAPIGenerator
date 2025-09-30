@@ -271,7 +271,7 @@ type ContentGenerator() =
                     return loader.LoadAsync(context.Source.{{r.Destination.Pluralize().ToString()}});
                 });
             """
-        | OneToMany(r) -> 
+        | SingleOneToMany(r) -> 
             $$"""
             Field<ListGraphType<{{r.Destination.ToString()}}GraphType>, IEnumerable<{{r.Destination.ToString()}}>>("{{r.Destination.Pluralize().ToString()}}") // Debug - OneToMany(r) case
                 .ResolveAsync(context => 
