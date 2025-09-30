@@ -78,7 +78,7 @@ type ManyToOneRelation = {
 type OneToManyRelation = {
     Name: RelationName
 
-    KeyType: IdType
+    // KeyType: IdType
     NavProp: CollectionNavigationProperty
     BackwardsNavProp: SingleNavigationProperty
 
@@ -106,7 +106,7 @@ type OneToManyRelation = {
 type ManyToManyRelationWithJoinTable = {
     Name: RelationName
 
-    KeyType: IdType
+    // KeyType: IdType
     NavProp: CollectionNavigationProperty
     JoinTableBackwardsNavProp: SingleNavigationProperty
     JoinTableNavProp: SingleNavigationProperty
@@ -123,7 +123,7 @@ type ManyToManyRelationWithJoinTable = {
 type ManyToManyRelation = {
     Name: RelationName
 
-    KeyType: IdType
+    // KeyType: IdType
     NavProp: CollectionNavigationProperty
     BackwardsNavProp: CollectionNavigationProperty
 
@@ -141,16 +141,16 @@ type Relation =
     // | MultipleOneToMany of MultipleOneToManyRelation
     | ManyToManyWithJoinTable of ManyToManyRelationWithJoinTable
     | ManyToMany of ManyToManyRelation
-with
-    member this.KeyType : IdType =
-        match this with
-        | OneToOne(r) -> r.KeyType
-        | ManyToOne(r) -> r.KeyType
-        // | MultipleManyToOne(r) -> r.KeyType
-        | OneToMany(r) -> r.KeyType
-        // | MultipleOneToMany(r) -> r.KeyType
-        | ManyToManyWithJoinTable(r) -> r.KeyType
-        | ManyToMany(r) -> r.KeyType
+// with
+    // member this.KeyType : IdType =
+    //     match this with
+    //     | OneToOne(r) -> r.KeyType
+    //     | ManyToOne(r) -> r.KeyType
+    //     // | MultipleManyToOne(r) -> r.KeyType
+    //     | OneToMany(r) -> r.KeyType
+    //     // | MultipleOneToMany(r) -> r.KeyType
+    //     | ManyToManyWithJoinTable(r) -> r.KeyType
+    //     | ManyToMany(r) -> r.KeyType
 
 type Field = {
     Name: string

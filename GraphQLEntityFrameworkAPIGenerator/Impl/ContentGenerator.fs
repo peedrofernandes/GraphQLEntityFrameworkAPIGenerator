@@ -21,7 +21,7 @@ type ContentGenerator() =
             | PrimitiveType.DateTimeOffset -> $$"""Field(t => t.{{field.Name}}, type: typeof(DateTimeOffsetGraphType), nullable: {{mapBool(field.IsNullable)}});"""
             | PrimitiveType.TimeSpan -> $$"""Field(t => t.{{field.Name}}, type: typeof(TimeSpanGraphType), nullable: {{mapBool(field.IsNullable)}});"""
             | PrimitiveType.Decimal -> $$"""Field(t => t.{{field.Name}}, type: typeof(DecimalGraphType), nullable: {{mapBool(field.IsNullable)}});"""
-            | PrimitiveType.Double -> $$"""Field(t => t.{{field.Name}}, type: typeof(DoubleGraphType), nullable: {{mapBool(field.IsNullable)}});"""
+            | PrimitiveType.Double -> $$"""Field(t => t.{{field.Name}}, type: typeof(FloatGraphType), nullable: {{mapBool(field.IsNullable)}});"""
             | PrimitiveType.Float -> $$"""Field(t => t.{{field.Name}}, type: typeof(FloatGraphType), nullable: {{mapBool(field.IsNullable)}});"""
             | PrimitiveType.Long -> $$"""Field(t => t.{{field.Name}}, type: typeof(LongGraphType), nullable: {{mapBool(field.IsNullable)}});"""
             | PrimitiveType.Short -> $$"""Field(t => t.{{field.Name}}, type: typeof(ShortGraphType), nullable: {{mapBool(field.IsNullable)}});"""
@@ -52,9 +52,10 @@ type ContentGenerator() =
             let searchKey = r.BackwardsNavProp.FKeyName
             let appliedKey = r.SourceTable.PrimaryKey.Name
             let keyType = r.KeyType
+            let targetNavigationProperty = r.NavProp.Name
 
             $$"""
-            Field<{{targetTable}}GraphType, {{targetTable}}>("{{targetTable}}")
+            Field<{{targetTable}}GraphType, {{targetTable}}>("{{targetNavigationProperty}}") // Debug: OneToOne relation
                 .ResolveAsync(context => 
                 {
                     var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{keyType}}, {{targetTable}}>(
@@ -74,22 +75,21 @@ type ContentGenerator() =
                         });
 
                     return loader.LoadAsync(context.Source.{{appliedKey}});
-                });
-            """
+                });"""
         | ManyToOne(r) ->
             let sourceTable = r.SourceTable.Name
             let targetTable = r.TargetTable.Name
             let searchKey = r.SourceTable.PrimaryKey.Name
             let appliedKey = r.SourceTable.PrimaryKey.Name
-            let keyType = r.KeyType
+            let keyType = r.SourceTable.PrimaryKey.Type
             let targetNavigationProperty = r.NavProp.Name
 
             $$"""
-            Field<{{targetTable}}GraphType, {{targetTable}}>("{{targetTable}}")
+            Field<{{targetTable}}GraphType, {{targetTable}}>("{{targetNavigationProperty}}") // Debug: ManyToOne relation
                 .ResolveAsync(context => 
                 {
                     var loader = dataLoaderAccessor.Context.GetOrAddBatchLoader<{{keyType}}, {{targetTable}}>(
-                        "{{sourceTable}}-{{targetTable}}-loader",
+                        "{{sourceTable}}-{{targetNavigationProperty}}-loader",
                         async ids => 
                         {
                             var data = await dbContext.{{sourceTable.Pluralize()}}
@@ -105,17 +105,17 @@ type ContentGenerator() =
                         });
 
                     return loader.LoadAsync(context.Source.{{appliedKey}});
-                });
-            """
+                });"""
         | OneToMany(r) ->
             let sourceTable = r.SourceTable.Name
             let targetTable = r.TargetTable.Name
-            let keyType = r.KeyType
+            let keyType = r.SourceTable.PrimaryKey.Type
             let appliedKey = r.SourceTable.PrimaryKey.Name
             let backwardsForeignKeyName = r.BackwardsNavProp.FKeyName
+            let targetNavigationProperty = r.NavProp.Name
 
             $$"""
-            Field<ListGraphType<{{targetTable}}GraphType>, IEnumerable<{{targetTable}}>>("{{r.Destination.Pluralize()}}")
+            Field<ListGraphType<{{targetTable}}GraphType>, IEnumerable<{{targetTable}}>>("{{targetNavigationProperty}}") // Debug: OneToMany relation
                 .ResolveAsync(context => 
                 {
                     var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{keyType}}, {{targetTable}}>(
@@ -135,19 +135,19 @@ type ContentGenerator() =
                         });
 
                     return loader.LoadAsync(context.Source.{{appliedKey}});
-                });
-            """
+                });"""
         | ManyToManyWithJoinTable(r) ->
             let sourceTable = r.SourceTable.Name
             let joinTable = r.JoinTable.Name
             let targetTable = r.TargetTable.Name
-            let keyType = r.KeyType
+            let keyType = r.SourceTable.PrimaryKey.Type;
             let appliedKey = r.SourceTable.PrimaryKey.Name
             let joinTableBackwardsFKey = r.JoinTableBackwardsNavProp.FKeyName
             let joinTableNavProp = r.JoinTableNavProp.Name
+            let targetNavigationProperty = r.JoinTableNavProp.Name.Pluralize();
 
             $$"""
-            Field<ListGraphType<{{targetTable}}GraphType>, IEnumerable<{{targetTable}}>>("{{r.Destination.Pluralize()}}")
+            Field<ListGraphType<{{targetTable}}GraphType>, IEnumerable<{{targetTable}}>>("{{targetNavigationProperty}}") // Debug: ManyToManyWithJoinTable relation
                 .ResolveAsync(context => 
                 {
                     var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{keyType}}, {{targetTable}}>(
@@ -167,18 +167,18 @@ type ContentGenerator() =
                         });
 
                     return loader.LoadAsync(context.Source.{{appliedKey}});
-                });
-            """
+                });"""
         | ManyToMany(r) ->
             let sourceTable = r.SourceTable.Name
             let targetTable = r.TargetTable.Name
-            let keyType = r.KeyType
+            let keyType = r.SourceTable.PrimaryKey.Type
             let appliedKey = r.SourceTable.PrimaryKey.Name
             let navPropName = r.NavProp.Name
             let targetPrimaryKey = r.TargetTable.PrimaryKey.Name
+            let targetNavigationProperty = r.NavProp.Name
 
             $$"""
-            Field<ListGraphType<{{targetTable}}GraphType>, IEnumerable<{{targetTable}}>>("{{r.Destination.Pluralize()}}")
+            Field<ListGraphType<{{targetTable}}GraphType>, IEnumerable<{{targetTable}}>>("{{targetNavigationProperty}}") // Debug: ManyToMany relation
                 .ResolveAsync(context => 
                 {
                     var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{keyType}}, {{targetTable}}>(
@@ -202,8 +202,7 @@ type ContentGenerator() =
                         });
 
                     return loader.LoadAsync(context.Source.{{appliedKey}});
-                });
-            """
+                });"""
 
     interface IContentGenerator with
         member _.GenerateContent(entity: Entity) : string =
@@ -224,7 +223,7 @@ using GraphQL.DataLoader;
 using GraphQL.Types;
 using Microsoft.EntityFrameworkCore;
 using WP.Cooking.GESE.WebAPI.Models;
-
+#pragma warning disable CS8604, CS8073, CS8619
 
 namespace WP.Cooking.GESE.WebAPI.GraphQL.Types
 {
@@ -232,8 +231,7 @@ namespace WP.Cooking.GESE.WebAPI.GraphQL.Types
     {
         public {{entity.Name}}GraphType(GeseCookingContext dbContext, IDataLoaderContextAccessor dataLoaderAccessor)
         {
-            {{mappedFields |> String.concat "\n\t\t\t"}}
-            {{mappedRelations |> String.concat "\n\t\t\t"}}
+            {{(mappedFields @ mappedRelations) |> String.concat "\n\t\t\t"}}
         }
     }
 }

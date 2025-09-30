@@ -178,7 +178,7 @@ type TableParser() =
                         let isPrimitiveProperty = not hasVirtualKeyword && not isPrimaryKey && not isForeignKey
 
                         if isPrimaryKey && isForeignKey then
-                            let primaryKey = PrimaryKey { Type = mapIdType cleanType; Name = propName; IsNullable = isNullable };
+                            let primaryKey = PrimaryKey { Type = mapIdType cleanType; Name = PropName propName; IsNullable = isNullable };
                             let foreignKey = 
                                 let correspondingNavPropName =
                                     matches
@@ -189,10 +189,10 @@ type TableParser() =
                                 if correspondingNavPropName.IsNone then
                                     failwith $"No corresponding nav prop name for {propName} foreign key"
                                 else
-                                    ForeignKey { Type = mapIdType cleanType; Name = propName; IsNullable = isNullable; NavPropName = correspondingNavPropName.Value }
+                                    ForeignKey { Type = mapIdType cleanType; Name = PropName propName; IsNullable = isNullable; NavPropName = PropName correspondingNavPropName.Value }
                             [primaryKey; foreignKey]
                         elif isPrimaryKey then
-                            PrimaryKey { Type = mapIdType cleanType; Name = propName; IsNullable = isNullable }
+                            PrimaryKey { Type = mapIdType cleanType; Name = PropName propName; IsNullable = isNullable }
                             |> List.singleton
                         elif isForeignKey then
                             let correspondingNavPropName =
@@ -204,7 +204,7 @@ type TableParser() =
                             if correspondingNavPropName.IsNone then
                                 failwith $"No corresponding nav prop name for {propName} foreign key"
                             else
-                                ForeignKey { Type = mapIdType cleanType; Name = propName; IsNullable = isNullable; NavPropName = correspondingNavPropName.Value }
+                                ForeignKey { Type = mapIdType cleanType; Name = PropName propName; IsNullable = isNullable; NavPropName = PropName correspondingNavPropName.Value }
                             |> List.singleton
                         elif isNavigationProperty then
                             let inverseName = // Get from [InverseProperty("...")]
@@ -216,7 +216,7 @@ type TableParser() =
                             else
 
                             if isCollection then
-                                Navigation (Collection { Type = TableName cleanType; Name = propName; IsNullable = isNullable; InverseName = inverseName })
+                                Navigation (Collection { Type = TableName cleanType; Name = PropName propName; IsNullable = isNullable; InverseName = PropName inverseName })
                                 |> List.singleton
                             else
                                 let correspondingForeignKeyName = 
@@ -226,10 +226,10 @@ type TableParser() =
                                 if correspondingForeignKeyName = "" then
                                     failwith $"No corresponding foreign key name for {propName} single navigation property"
                                 else
-                                    Navigation (Single { Type = TableName cleanType; Name = propName; IsNullable = isNullable; FKeyName = correspondingForeignKeyName; InverseName = inverseName })
+                                    Navigation (Single { Type = TableName cleanType; Name = PropName propName; IsNullable = isNullable; FKeyName = PropName correspondingForeignKeyName; InverseName = PropName inverseName })
                                 |> List.singleton
                         elif isPrimitiveProperty then
-                            Primitive { Type = mapPrimitiveType cleanType; Name = propName; IsNullable = isNullable }
+                            Primitive { Type = mapPrimitiveType cleanType; Name = PropName propName; IsNullable = isNullable }
                             |> List.singleton
                         else
                             failwith $"Property '{propName}' in table '{tableName}' was not able to be classified")
@@ -291,7 +291,7 @@ type TableParser() =
                     properties
                     |> Seq.filter (fun property ->
                         match property with
-                        | Primitive(p) -> p.Name <> "Index"
+                        | Primitive(p) -> p.Name.ToString() <> "Index"
                         | _ -> false)
                     |> Seq.isEmpty
 

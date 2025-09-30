@@ -15,33 +15,48 @@ with
         let (TableName name) = this
         name.ToString()
 
+type PluralizedPropName = PluralizedNavPropName of string
+with
+    override this.ToString() : string =
+        let (PluralizedNavPropName name) = this
+        name.ToString()
+
+type PropName = PropName of string
+with 
+    member this.Pluralize() : PluralizedPropName = 
+        let (PropName name) = this
+        PluralizedNavPropName (name + "s")
+    override this.ToString() : string =
+        let (PropName name) = this
+        name.ToString()
+
 type PrimitiveProperty = {
     Type: PrimitiveType
-    Name: string
+    Name: PropName
     IsNullable: bool
 }
 type PrimaryKeyProperty = {
     Type: IdType
-    Name: string
+    Name: PropName
     IsNullable: bool
 }
 type ForeignKeyProperty = {
     Type: IdType
-    Name: string
-    NavPropName: string
+    Name: PropName
+    NavPropName: PropName
     IsNullable: bool
 }
 type SingleNavigationProperty = {
     Type: TableName
-    Name: string
-    FKeyName: string
-    InverseName: string
+    Name: PropName
+    FKeyName: PropName
+    InverseName: PropName
     IsNullable: bool
 }
 type CollectionNavigationProperty = {
     Type: TableName
-    Name: string
-    InverseName: string
+    Name: PropName
+    InverseName: PropName
     IsNullable: bool
 }
 type NavigationProperty =

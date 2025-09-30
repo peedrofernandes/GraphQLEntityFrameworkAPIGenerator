@@ -14,13 +14,13 @@ type RelationParser() =
                 match property with
                 | PrimaryKey(p) -> 
                     Some { 
-                        Name = p.Name;
+                        Name = p.Name.ToString();
                         Type = Type.Id p.Type;
                         IsNullable = p.IsNullable
                     }
                 | Primitive(p) -> 
                     Some { 
-                        Name = p.Name;
+                        Name = p.Name.ToString();
                         Type = Type.Primitive p.Type;
                         IsNullable = p.IsNullable
                     }
@@ -40,7 +40,7 @@ type RelationParser() =
                 let thatNavProp =
                     otherTable.NavigationProperties
                     |> Seq.tryFind (fun otherNavProp ->
-                        otherNavProp.Name.ToString() = thisNavProp.InverseName)
+                        otherNavProp.Name.ToString() = thisNavProp.InverseName.ToString())
                     |> fun n ->
                         match n with
                         | Some v -> v
@@ -72,7 +72,7 @@ type RelationParser() =
                 | Regular(otherTable), Collection(thisNavProp), Single(thatNavProp) ->
                     OneToMany {
                         Name = RelationName (thisNavProp.Name.ToString());
-                        KeyType = otherTable.PrimaryKey.Type;
+                        // KeyType = otherTable.PrimaryKey.Type;
                         NavProp = thisNavProp;
                         BackwardsNavProp = thatNavProp;
                         SourceTable = table;
@@ -95,7 +95,7 @@ type RelationParser() =
                             | Some (Regular(destination)) ->
                                 ManyToManyWithJoinTable {
                                     Name = RelationName (nav.Name.ToString());
-                                    KeyType = destination.PrimaryKey.Type;
+                                    // KeyType = destination.PrimaryKey.Type;
                                     NavProp = thisNavProp;
                                     JoinTableNavProp = nav;
                                     JoinTableBackwardsNavProp = thatNavProp;
@@ -111,7 +111,7 @@ type RelationParser() =
                     // Many to many relation without join table (collection both sides)
                     ManyToMany {
                         Name = RelationName (thisNavProp.Name.ToString());
-                        KeyType = regularTable.PrimaryKey.Type;
+                        // KeyType = regularTable.PrimaryKey.Type;
                         NavProp = thisNavProp;
                         BackwardsNavProp = thatNavProp;
                         Destination = EntityName (thisNavProp.Name.ToString());
@@ -145,7 +145,7 @@ type RelationParser() =
             table.PrimitiveProperties
             |> Seq.map (fun p  ->
             {
-                Name = p.Name;
+                Name = p.Name.ToString();
                 Type = Type.Primitive p.Type;
                 IsNullable = p.IsNullable
             })
