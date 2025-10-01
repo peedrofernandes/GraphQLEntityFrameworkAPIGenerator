@@ -2,7 +2,7 @@
   "profiles": {
     "GraphQLEntityFrameworkAPIGenerator": {
       "commandName": "Project",
-      "commandLineArgs": "C:\\projects\\whirlpool\\WP.GESE.WebAPIs\\WP.Cooking.GESE.WebAPI\\Models C:\\projects\\whirlpool\\WP.GESE.WebAPIs\\WP.Cooking.GESE.WebAPI\\GraphQL\\Types",
+      "commandLineArgs": "C:\\projects\\whirlpool\\WP.GESE.WebAPIs\\WP.VA.GESE.WebAPI\\Models C:\\projects\\whirlpool\\WP.GESE.WebAPIs\\WP.VA.GESE.WebAPI\\GraphQL\\Types",
       "workingDirectory": "C:\\projects\\whirlpool\\GraphQLEntityFrameworkAPIGenerator"
     }
   }

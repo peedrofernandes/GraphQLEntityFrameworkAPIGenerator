@@ -16,13 +16,19 @@ type RelationParser() =
                     Some { 
                         Name = p.Name.ToString();
                         Type = Type.Id p.Type;
-                        IsNullable = p.IsNullable
+                        IsNullable = p.IsNullable;
+                    }
+                | ForeignKey(p) -> 
+                    Some { 
+                        Name = p.Name.ToString();
+                        Type = Type.Id p.Type;
+                        IsNullable = p.IsNullable;
                     }
                 | Primitive(p) -> 
                     Some { 
                         Name = p.Name.ToString();
                         Type = Type.Primitive p.Type;
-                        IsNullable = p.IsNullable
+                        IsNullable = p.IsNullable;
                     }
                 | _ -> None)
 
@@ -44,7 +50,7 @@ type RelationParser() =
                     |> fun n ->
                         match n with
                         | Some v -> v
-                        | None -> failwith $"No backwards navigation property for {table.Name} table"
+                        | None -> failwith $"Expected '{thisNavProp.InverseName}' backwards navigation property for table '{otherTable.Name}'. If you changed the 'IgnoredTables', please make sure to always ignore backwards navigation properties on tables since every navigation property must have a backwards counterpart."
 
                 match otherTable, thisNavProp, thatNavProp with
                 | Regular(otherTable), Single(thisNavProp), Single(thatNavProp) ->
@@ -122,7 +128,7 @@ type RelationParser() =
                     failwith 
                         $$"""
                             Default case should not be reached:
-                            IsJoinTable = {{match otherTable with | Join(_) -> true | _ -> false}},
+                            Other table is Join Table = {{match otherTable with | Join(_) -> true | _ -> false}},
                             table.Name = {{table.Name}},
                             otherTable.Name = {{otherTable.Name}},
                             table.NavigationProperties = {{table.NavigationProperties}},

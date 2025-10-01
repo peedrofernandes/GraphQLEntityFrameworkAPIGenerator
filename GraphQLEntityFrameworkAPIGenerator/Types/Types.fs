@@ -1,5 +1,41 @@
 namespace GraphQLEntityFrameworkAPIGenerator.Types
 
+module StringUtils =
+    let pluralize (name: string) : string =
+        // Check if already pluralized
+        if name.EndsWith("ies") || name.EndsWith("es") || name.EndsWith("ves") then
+            name
+        elif name.EndsWith("s") && name.Length > 1 && not (name.EndsWith("ss")) then
+            // Already ends with 's' but not 'ss' - likely already plural
+            name
+        elif name.EndsWith("Data") || name.EndsWith("data") then
+            name
+        // Handle pluralization rules
+        elif name.EndsWith("s") || name.EndsWith("x") || name.EndsWith("z") || name.EndsWith("ss") then
+            name + "es"
+        elif name.EndsWith("ch") || name.EndsWith("sh") then
+            name + "es"
+        elif name.EndsWith("Datum") then
+            name.Substring(0, name.Length - 5) + "Data"
+        elif name.EndsWith("datum") then
+            name.Substring(0, name.Length - 5) + "data"
+        elif name.Length >= 2 && name.[name.Length - 1] = 'y' then
+            let secondLastChar = name.[name.Length - 2]
+            // Check if the character before 'y' is a consonant (not a vowel)
+            if not (secondLastChar = 'a' || secondLastChar = 'e' || secondLastChar = 'i' || secondLastChar = 'o' || secondLastChar = 'u' ||
+                    secondLastChar = 'A' || secondLastChar = 'E' || secondLastChar = 'I' || secondLastChar = 'O' || secondLastChar = 'U') then
+                name.Substring(0, name.Length - 1) + "ies"
+            else
+                name + "s"
+        elif name.ToLower().EndsWith("if") then
+            name + "s"
+        elif name.ToLower().EndsWith("f") then
+            name.Substring(0, name.Length - 1) + "ves"
+        elif name.ToLower().EndsWith("fe") then
+            name.Substring(0, name.Length - 2) + "ves"
+        else
+            name + "s"
+
 type PrimitiveType =
     | Int
     | Byte

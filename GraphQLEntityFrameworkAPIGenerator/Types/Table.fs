@@ -10,7 +10,7 @@ type TableName = TableName of string
 with
     member this.Pluralize() : PluralizedTableName = 
         let (TableName name) = this
-        PluralizedTableName (name + "s")
+        PluralizedTableName (StringUtils.pluralize name)
     override this.ToString() : string =
         let (TableName name) = this
         name.ToString()
@@ -25,7 +25,7 @@ type PropName = PropName of string
 with 
     member this.Pluralize() : PluralizedPropName = 
         let (PropName name) = this
-        PluralizedNavPropName (name + "s")
+        PluralizedNavPropName (StringUtils.pluralize name)
     override this.ToString() : string =
         let (PropName name) = this
         name.ToString()

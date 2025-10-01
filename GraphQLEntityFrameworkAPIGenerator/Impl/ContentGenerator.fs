@@ -4,6 +4,17 @@ open GraphQLEntityFrameworkAPIGenerator.Interfaces
 open GraphQLEntityFrameworkAPIGenerator.Types
 
 type ContentGenerator() =
+    let resolveTableName(name: TableName) : TableName =
+        match name.ToString() with
+        | "Attribute" -> TableName "Models.Attribute"
+        | "Task" -> TableName "Models.Task"
+        | _ -> name
+    let resolveEntityName(name: EntityName) : EntityName =
+        match name.ToString() with
+        | "Attribute" -> EntityName "Models.Attribute"
+        | "Task" -> EntityName "Models.Task"
+        | _ -> name
+
     // private method, given a field, return the corresponding GraphQL field
     member private this.MapField(field: Field) : string =
         let mapBool(v: bool) =
@@ -45,6 +56,7 @@ type ContentGenerator() =
 
     member private this.MapRelation(entity: Entity, relation: Relation) : string =
 
+
         match relation with
         | OneToOne(r) ->
             let sourceTable = r.SourceTable.Name
@@ -55,11 +67,11 @@ type ContentGenerator() =
             let targetNavigationProperty = r.NavProp.Name
 
             $$"""
-            Field<{{targetTable}}GraphType, {{targetTable}}>("{{targetNavigationProperty}}") // Debug: OneToOne relation
+            Field<{{targetTable}}GraphType, {{resolveTableName targetTable}}>("{{targetNavigationProperty}}") // Debug: OneToOne relation
                 .ResolveAsync(context => 
                 {
-                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{keyType}}, {{targetTable}}>(
-                        "{{sourceTable}}-{{targetTable}}-loader",
+                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{keyType}}, {{resolveTableName targetTable}}>(
+                        "{{sourceTable}}-{{targetNavigationProperty}}-loader",
                         async ids => 
                         {
                             var data = await dbContext.{{targetTable.Pluralize()}}
@@ -85,10 +97,10 @@ type ContentGenerator() =
             let targetNavigationProperty = r.NavProp.Name
 
             $$"""
-            Field<{{targetTable}}GraphType, {{targetTable}}>("{{targetNavigationProperty}}") // Debug: ManyToOne relation
+            Field<{{targetTable}}GraphType, {{resolveTableName targetTable}}>("{{targetNavigationProperty}}") // Debug: ManyToOne relation
                 .ResolveAsync(context => 
                 {
-                    var loader = dataLoaderAccessor.Context.GetOrAddBatchLoader<{{keyType}}, {{targetTable}}>(
+                    var loader = dataLoaderAccessor.Context.GetOrAddBatchLoader<{{keyType}}, {{resolveTableName targetTable}}>(
                         "{{sourceTable}}-{{targetNavigationProperty}}-loader",
                         async ids => 
                         {
@@ -115,11 +127,11 @@ type ContentGenerator() =
             let targetNavigationProperty = r.NavProp.Name
 
             $$"""
-            Field<ListGraphType<{{targetTable}}GraphType>, IEnumerable<{{targetTable}}>>("{{targetNavigationProperty}}") // Debug: OneToMany relation
+            Field<ListGraphType<{{targetTable}}GraphType>, IEnumerable<{{resolveTableName targetTable}}>>("{{targetNavigationProperty}}") // Debug: OneToMany relation
                 .ResolveAsync(context => 
                 {
-                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{keyType}}, {{targetTable}}>(
-                        "{{sourceTable}}-{{targetTable}}-loader",
+                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{keyType}}, {{resolveTableName targetTable}}>(
+                        "{{sourceTable}}-{{targetNavigationProperty}}-loader",
                         async ids => 
                         {
                             var data = await dbContext.{{targetTable.Pluralize()}}
@@ -147,11 +159,11 @@ type ContentGenerator() =
             let targetNavigationProperty = r.JoinTableNavProp.Name.Pluralize();
 
             $$"""
-            Field<ListGraphType<{{targetTable}}GraphType>, IEnumerable<{{targetTable}}>>("{{targetNavigationProperty}}") // Debug: ManyToManyWithJoinTable relation
+            Field<ListGraphType<{{targetTable}}GraphType>, IEnumerable<{{resolveTableName targetTable}}>>("{{targetNavigationProperty}}") // Debug: ManyToManyWithJoinTable relation
                 .ResolveAsync(context => 
                 {
-                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{keyType}}, {{targetTable}}>(
-                        "{{sourceTable}}-{{targetTable}}-loader",
+                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{keyType}}, {{resolveTableName targetTable}}>(
+                        "{{sourceTable}}-{{targetNavigationProperty}}-loader",
                         async ids => 
                         {
                             var data = await dbContext.{{joinTable.Pluralize()}}
@@ -171,31 +183,31 @@ type ContentGenerator() =
         | ManyToMany(r) ->
             let sourceTable = r.SourceTable.Name
             let targetTable = r.TargetTable.Name
+            let searchKey = r.SourceTable.PrimaryKey.Name
             let keyType = r.SourceTable.PrimaryKey.Type
             let appliedKey = r.SourceTable.PrimaryKey.Name
             let navPropName = r.NavProp.Name
-            let targetPrimaryKey = r.TargetTable.PrimaryKey.Name
             let targetNavigationProperty = r.NavProp.Name
 
             $$"""
-            Field<ListGraphType<{{targetTable}}GraphType>, IEnumerable<{{targetTable}}>>("{{targetNavigationProperty}}") // Debug: ManyToMany relation
+            Field<ListGraphType<{{targetTable}}GraphType>, IEnumerable<{{resolveTableName targetTable}}>>("{{targetNavigationProperty}}") // Debug: ManyToMany relation
                 .ResolveAsync(context => 
                 {
-                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{keyType}}, {{targetTable}}>(
-                        "{{sourceTable}}-{{targetTable}}-loader",
+                    var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{keyType}}, {{resolveTableName targetTable}}>(
+                        "{{sourceTable}}-{{targetNavigationProperty}}-loader",
                         async ids => 
                         {
-                            var data = await dbContext.{{targetTable.Pluralize()}}
-                                .Where(x => x.{{navPropName}}.Any(c => ids.Contains(c.{{targetPrimaryKey}})))
+                            var data = await dbContext.{{sourceTable.Pluralize()}}
+                                .Where(x => ids.Contains(x.{{searchKey}}))
                                 .Select(x => new
                                 {
-                                    LoadGroup = x,
-                                    x.{{navPropName}},
+                                    Key = x.{{searchKey}},
+                                    Value = x.{{navPropName}},
                                 })
                                 .ToListAsync();
 
                             var lookup = data
-                                .SelectMany(x => x.{{navPropName}}.Select(c => new { Key = c.{{targetPrimaryKey}}, Value = x.LoadGroup }))
+                                .SelectMany(x => x.Value.Select(n => new { Key = x.Key, Value = n }))
                                 .ToLookup(x => x.Key, x => x.Value);
 
                             return lookup;
@@ -222,14 +234,14 @@ type ContentGenerator() =
 using GraphQL.DataLoader;
 using GraphQL.Types;
 using Microsoft.EntityFrameworkCore;
-using WP.Cooking.GESE.WebAPI.Models;
+using WP.VA.GESE.WebAPI.Models;
 #pragma warning disable CS8604, CS8073, CS8619
 
-namespace WP.Cooking.GESE.WebAPI.GraphQL.Types
+namespace WP.VA.GESE.WebAPI.GraphQL.Types
 {
-    public partial class {{entity.Name}}GraphType : ObjectGraphType<{{entity.Name}}>
+    public partial class {{entity.Name}}GraphType : ObjectGraphType<{{resolveEntityName entity.Name}}>
     {
-        public {{entity.Name}}GraphType(GeseCookingContext dbContext, IDataLoaderContextAccessor dataLoaderAccessor)
+        public {{entity.Name}}GraphType(GESE_VAWasherContext dbContext, IDataLoaderContextAccessor dataLoaderAccessor)
         {
             {{(mappedFields @ mappedRelations) |> String.concat "\n\t\t\t"}}
         }

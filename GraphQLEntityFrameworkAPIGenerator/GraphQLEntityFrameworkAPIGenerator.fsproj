@@ -1154,5 +1154,4 @@
     <Compile Include="Impl\TableParser.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
-  <ItemGroup />
 </Project>

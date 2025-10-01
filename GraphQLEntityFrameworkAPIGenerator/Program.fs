@@ -1,6 +1,5 @@
 ﻿module GraphQLEntityFrameworkAPIGenerator.Program
 
-open System
 open System.IO
 open GraphQLEntityFrameworkAPIGenerator.Interfaces
 open GraphQLEntityFrameworkAPIGenerator.Impl
@@ -23,7 +22,8 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
             printfn $"Created destination directory: {destinationPath}"
 
         let ignoredTables : string list = [
-            "GeseCookingContext"
+            // Cooking tables
+            "GESE_CookingContext"
             "CodeBuilder"
             "CodeBuilderContainer"
             "CodeBuilderContainersElement"
@@ -37,16 +37,26 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
             "PilotMultiSequenceDetail"
             "PilotMultiSequenceDetailsStep"
             "PilotMultiSequenceStep"
+            // Refrigeration files
+            "GESE_RefrigerationContext"
+            "FaultSubCode"
+            "FaultCode"
+            "FaultPrioritiesDetail"
+            "FaultPrioritiesConfigurations_FaultPrioritiesDetail"
+            "FaultPrioritiesConfiguration"
         ]
 
         let ignoredProperties : Map<TableName, string list> =
             Map [
-                (TableName "Modifier", [ "ModifierType51"; "ModifierType61" ])
-                (TableName "ModifierType", [ "ModifierModifierType51s"; "ModifierModifierType61s" ])
-                (TableName "PilotType", [ "MultiDriverPilotType"; "MultiSequencePilotType" ])
-                (TableName "ReadType", [ "MultiInputReadType" ])
-                (TableName "PrmPilotMultiSequence", [ "MultiSequencePilotType" ])
-                //(TableName "MultiDriverPilotType", [ "PilotType" ])
+                TableName "Modifier", [ "ModifierType51"; "ModifierType61" ]
+                TableName "ModifierType", [ "ModifierModifierType51s"; "ModifierModifierType61s" ]
+                TableName "PilotType", [ "MultiDriverPilotType"; "MultiSequencePilotType" ]
+                TableName "ReadType", [ "MultiInputReadType" ]
+                TableName "PrmPilotMultiSequence", [ "MultiSequencePilotType" ]
+                TableName "ACUExpansionBoardConfiguration", [ "Boards" ]
+                TableName "Board", [ "ACUExpansionBoardConfiguration" ]
+                TableName "HMIExpansionBoardConfiguration", [ "Displays" ]
+                TableName "Display", [ "HMIExpansionBoardConfigurations" ]
             ]
         
         // Get all .cs files from source directory
@@ -66,35 +76,41 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
             // Step 1: Parse all entity files to create Table objects
             let tables = 
                 entityFiles
-                |> Array.map (fun filePath ->
+                |> Seq.choose (fun filePath ->
                     try
                         printfn $"Parsing file: {Path.GetFileName filePath}"
                         let fileContent = File.ReadAllText filePath
                         let table = tableParser.ParseTable (ignoredProperties, fileContent)
-                        Some (table.Name, table)
+                        Some table
                     with
                     | ex ->
                         printfn $"Error parsing file {Path.GetFileName filePath}: {ex.Message}"
                         None)
-                |> Array.choose id
-                |> Map.ofArray
+                |> List.ofSeq
             
-            printfn $"Successfully parsed {tables.Count} tables"
-            
-            // Step 2: Use RelationParser to create Entity objects
-            let entities = relationParser.ParseEntities tables
+            printfn $"Successfully parsed {tables.Length} tables"
+
+            // Step 2: Convert the tables to a map
+            let tablesMap =
+                tables
+                |> List.map (fun t -> t.Name, t)
+                |> Map.ofList
+
+            // Step 3: Use RelationParser to create Entity objects
+            let entities = relationParser.ParseEntities tablesMap
             printfn $"Generated {entities.Length} entities"
             
-            // Create entity map for lookup
-            let entityMap = 
-                entities
-                |> List.map (fun entity -> entity.Name, entity)
-                |> Map.ofList
-            
-            // Step 3: Generate GraphQL type content for each entity and write to files
+            // Step 4: Generate GraphQL type content for each entity and write to files
             let mutable successCount = 0
             let mutable errorCount = 0
-            
+
+            // Remove all files from destination path (except the folder itself)
+            if Directory.Exists(destinationPath) then
+                Directory.GetFiles(destinationPath, "*GraphType.cs", SearchOption.AllDirectories)
+                |> Array.iter File.Delete
+                Directory.GetFiles(destinationPath, "*GraphType.Generated.cs", SearchOption.AllDirectories)
+                |> Array.iter File.Delete
+
             entities
             |> List.iter (fun entity ->
                 try
