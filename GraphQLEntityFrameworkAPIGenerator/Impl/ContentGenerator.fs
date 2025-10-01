@@ -66,15 +66,20 @@ type ContentGenerator(category : Category) =
             | IdType.Short -> $$"""Field(t => t.{{propName}}, type: typeof(ShortGraphType), nullable: {{nullable}}).Name("{{name}}");"""
 
     member private _.MapRelation(entity: Entity, relation: Relation) : string =
-
+        let resolveAppliedKey (pk: PrimaryKeyProperty) : string =
+            let resolveSinglePrimaryKeyProperty (pk: SinglePrimaryKeyProperty) =
+                $"context.Source.{pk.PropName}"
+            match pk with
+            | PrimaryKeyProperty.Single(pk) -> resolveSinglePrimaryKeyProperty pk
+            | PrimaryKeyProperty.Composite(pk) -> $"""({pk.Keys |> List.map resolveSinglePrimaryKeyProperty |> String.concat ", " })"""
 
         match relation with
         | OneToOne(r) ->
             let sourceTable = r.SourceTable.Name
             let targetTable = r.TargetTable.Name
             let searchKey = r.BackwardsNavProp.FKeyName
-            let appliedKey = r.SourceTable.PrimaryKey.PropName
-            let keyType = r.KeyType
+            let keyType = r.SourceTable.PrimaryKey
+            let appliedKey = resolveAppliedKey r.SourceTable.PrimaryKey
             let targetNavigationProperty = r.NavProp.ColumnName
 
             $$"""

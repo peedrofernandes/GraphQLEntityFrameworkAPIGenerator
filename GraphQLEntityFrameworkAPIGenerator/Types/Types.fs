@@ -94,6 +94,7 @@ type IdType =
     | Short
     | Bool
     | Float
+    | Composite of IdType list
 with
     override this.ToString() : string =
         match this with
@@ -104,6 +105,7 @@ with
         | Short -> "short"
         | Bool -> "bool"
         | Float -> "float"
+        | Composite(ids) -> $"""({ids |> List.map (fun id -> id.ToString()) |> String.concat ", "})"""
 type Type =
     | Primitive of PrimitiveType
     | Id of IdType

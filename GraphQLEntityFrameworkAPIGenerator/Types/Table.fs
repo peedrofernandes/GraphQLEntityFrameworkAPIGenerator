@@ -62,6 +62,11 @@ type CompositePrimaryKeyProperty = {
 type PrimaryKeyProperty = 
     | Single of SinglePrimaryKeyProperty
     | Composite of CompositePrimaryKeyProperty
+with
+    member this.Type : IdType =
+        match this with
+        | Single(s) -> s.Type
+        | Composite(c) -> c.Keys |> List.map (fun k -> k.Type) |> (fun ts -> IdType.Composite ts)
 type ForeignKeyProperty = {
     Type: IdType
     PropName: PropName
