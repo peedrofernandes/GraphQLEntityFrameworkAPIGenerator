@@ -51,12 +51,17 @@ type PrimitiveProperty = {
     ColumnName: ColumnName
     IsNullable: bool
 }
-type PrimaryKeyProperty = {
+type SinglePrimaryKeyProperty = {
     Type: IdType
     PropName: PropName
     ColumnName: ColumnName
-    IsNullable: bool
 }
+type CompositePrimaryKeyProperty = {
+    Keys: SinglePrimaryKeyProperty list
+}
+type PrimaryKeyProperty = 
+    | Single of SinglePrimaryKeyProperty
+    | Composite of CompositePrimaryKeyProperty
 type ForeignKeyProperty = {
     Type: IdType
     PropName: PropName
@@ -105,13 +110,15 @@ type Property =
     | PrimaryKey of PrimaryKeyProperty
     | ForeignKey of ForeignKeyProperty
     | Navigation of NavigationProperty
-with
-    member this.Name =
-        match this with
-        | Primitive(p) -> p.PropName
-        | PrimaryKey(pk) -> pk.PropName
-        | ForeignKey(fk) -> fk.PropName
-        | Navigation(n) -> n.Name
+//with
+//    member this.Name =
+//        match this with
+//        | Primitive(p) -> p.PropName
+//        | PrimaryKey(pk) -> match pk with
+//            | Single(s) -> s.PropName
+//            | Composite(c) -> c.PropName
+//        | ForeignKey(fk) -> fk.PropName
+//        | Navigation(n) -> n.Name
 
 type RegularTable = {
     Name: TableName

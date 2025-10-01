@@ -23,7 +23,7 @@ type RelationName = RelationName of string
 type OneToOneRelation = {
     Name: RelationName
 
-    KeyType: IdType
+    //KeyType: IdType
 
     NavProp: SingleNavigationProperty
     BackwardsNavProp: SingleNavigationProperty
@@ -38,7 +38,7 @@ type OneToOneRelation = {
 type ManyToOneRelation = {
     Name: RelationName
 
-    KeyType: IdType
+    //KeyType: IdType
 
     NavProp: SingleNavigationProperty
     BackwardsNavProp: CollectionNavigationProperty

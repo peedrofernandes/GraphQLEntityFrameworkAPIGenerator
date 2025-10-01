@@ -22,10 +22,10 @@ type TableParser() =
             
             let isKeyless = isKeylessEntity fileContent
 
-            let hasMultipleKeyAttributes = 
-                System.Text.RegularExpressions.Regex.Matches(fileContent, @"\[Key\]")
-                |> Seq.length
-                |> (<) 1
+            //let hasMultipleKeyAttributes = 
+            //    System.Text.RegularExpressions.Regex.Matches(fileContent, @"\[Key\]")
+            //    |> Seq.length
+            //    |> (<) 1
 
             let mapPrimitiveType (typeStr: string) : PrimitiveType =
                 match typeStr.ToLower() with
@@ -92,20 +92,13 @@ type TableParser() =
                         
                         let typeStr = match'.Groups.[4].Value.Trim()
                         let cleanType = typeStr.Replace("?", "").Replace("<", "").Replace(">", "").Replace("ICollection", "").Trim()
-                        
+
                         let hasVirtualKeyword = match'.Groups.[3].Value.Trim() <> ""
                         let hasKeyAttribute = attributesStr.Contains("[Key]")
                         let isNullable = typeStr.Contains("?")
                         let isCollection = typeStr.Contains("ICollection")
 
-                        let isPrimaryKey = 
-                            match hasMultipleKeyAttributes with
-                                | false -> 
-                                    hasKeyAttribute
-                                | true -> // Use heuristic here to detrermine if it's a primary key or not
-                                    propName.ToLower().Trim() = "id" 
-                                    || propName.ToLower().Trim() = tableName.ToString().ToLower().Trim() + "id" 
-                                    || propName.ToLower().Trim() = tableName.Pluralize().ToString().ToLower().Trim() + "id"   
+                        let isPrimaryKey = hasKeyAttribute  
 
                         let isForeignKey =
                             matches
@@ -119,7 +112,7 @@ type TableParser() =
                         let isPrimitiveProperty = not hasVirtualKeyword && not isPrimaryKey && not isForeignKey
 
                         if isPrimaryKey && isForeignKey then
-                            let primaryKey = PrimaryKey { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable };
+                            let primaryKey = PrimaryKey (PrimaryKeyProperty.Single { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; });
                             let foreignKey = 
                                 let correspondingNavPropName =
                                     matches
@@ -133,7 +126,7 @@ type TableParser() =
                                     ForeignKey { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable; NavPropName = PropName correspondingNavPropName.Value }
                             [primaryKey; foreignKey]
                         elif isPrimaryKey then
-                            PrimaryKey { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable }
+                            PrimaryKey (PrimaryKeyProperty.Single { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; })
                             |> List.singleton
                         elif isForeignKey then
                             let correspondingNavPropName =
@@ -174,6 +167,33 @@ type TableParser() =
                             |> List.singleton
                         else
                             failwith $"Property '{propName}' in table '{tableName}' was not able to be classified")
+                    |> (fun props ->
+                            let primaryKeys : SinglePrimaryKeyProperty list =
+                                props
+                                |> Seq.choose (fun p ->
+                                    match p with
+                                    | PrimaryKey(pk) -> 
+                                        match pk with
+                                        | PrimaryKeyProperty.Single(p) -> Some (p)
+                                        | _ -> None
+                                    | _ -> None)
+                                |> List.ofSeq
+                            let otherProps : Property list =
+                                props
+                                |> Seq.filter (fun p ->
+                                    match p with
+                                    | PrimaryKey(pk) -> false
+                                    | _ -> true)
+                                |> List.ofSeq
+
+                            if primaryKeys.Length <= 0 then
+                                failwith $"No primary keys found for table {tableName}"
+                            elif primaryKeys.Length = 1 then
+                                otherProps
+                                |> List.append [primaryKeys |> List.head |> (fun x -> PrimaryKey (PrimaryKeyProperty.Single x))]
+                            else                                otherProps
+                                |> List.append [primaryKeys |> (fun x -> PrimaryKey (PrimaryKeyProperty.Composite { Keys = x }))]
+                        )
                     |> List.ofSeq
                     |> (fun props -> // Final validation
                         let primaryKeys = 

@@ -10,30 +10,42 @@ type RelationParser() =
     member private this.ParseRegularTable(tables: Map<TableName, Table>, table: RegularTable) : Entity =
         let fields: Field list =
             table.Properties
-            |> List.choose (fun property  ->
+            |> List.collect (fun property  ->
                 match property with
-                | PrimaryKey(p) -> 
-                    Some { 
-                        PropName = p.PropName;
-                        ColumnName = p.ColumnName;
-                        Type = Type.Id p.Type;
-                        IsNullable = p.IsNullable;
-                    }
+                | PrimaryKey(pk) ->
+                    match pk with
+                    | PrimaryKeyProperty.Single(pk) -> 
+                        { 
+                            PropName = pk.PropName;
+                            ColumnName = pk.ColumnName;
+                            Type = Type.Id pk.Type;
+                            IsNullable = false;
+                        } |> List.singleton
+                    | PrimaryKeyProperty.Composite(pk) ->
+                        pk.Keys
+                        |> List.map (fun pk -> 
+                            { 
+                                PropName = pk.PropName;
+                                ColumnName = pk.ColumnName;
+                                Type = Type.Id pk.Type;
+                                IsNullable = false;
+                            })
+                        |> List.ofSeq
                 | ForeignKey(p) -> 
-                    Some { 
+                    { 
                         PropName = p.PropName;
                         ColumnName = p.ColumnName;
                         Type = Type.Id p.Type;
                         IsNullable = p.IsNullable;
-                    }
+                    } |> List.singleton
                 | Primitive(p) -> 
-                    Some { 
+                    { 
                         PropName = p.PropName;
                         ColumnName = p.ColumnName;
                         Type = Type.Primitive p.Type;
                         IsNullable = p.IsNullable;
-                    }
-                | _ -> None)
+                    } |> List.singleton
+                | _ -> [])
 
         let relations: Relation list =
             table.Properties
@@ -69,8 +81,7 @@ type RelationParser() =
                     } |> Seq.singleton
                 | Regular(otherTable), Single(thisNavProp), Collection(thatNavProp) ->
                     ManyToOne { 
-                        Name = RelationName (thisNavProp.PropName.ToString()); 
-                        KeyType = otherTable.PrimaryKey.Type;
+                        Name = RelationName (thisNavProp.PropName.ToString());
                         NavProp = thisNavProp;
                         BackwardsNavProp = thatNavProp;
                         SourceTable = table;
