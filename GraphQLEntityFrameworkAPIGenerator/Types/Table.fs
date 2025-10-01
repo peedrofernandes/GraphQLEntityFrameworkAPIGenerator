@@ -30,32 +30,52 @@ with
         let (PropName name) = this
         name.ToString()
 
+type PluralizedColumnName = PluralizedColumnName of string
+with
+    override this.ToString() : string =
+        let (PluralizedColumnName name) = this
+        name.ToString()
+
+type ColumnName = ColumnName of string
+with 
+    member this.Pluralize() : PluralizedColumnName = 
+        let (ColumnName name) = this
+        PluralizedColumnName (StringUtils.pluralize name)
+    override this.ToString() : string =
+        let (ColumnName name) = this
+        name.ToString()
+
 type PrimitiveProperty = {
     Type: PrimitiveType
-    Name: PropName
+    PropName: PropName
+    ColumnName: ColumnName
     IsNullable: bool
 }
 type PrimaryKeyProperty = {
     Type: IdType
-    Name: PropName
+    PropName: PropName
+    ColumnName: ColumnName
     IsNullable: bool
 }
 type ForeignKeyProperty = {
     Type: IdType
-    Name: PropName
+    PropName: PropName
+    ColumnName: ColumnName
     NavPropName: PropName
     IsNullable: bool
 }
 type SingleNavigationProperty = {
     Type: TableName
-    Name: PropName
+    PropName: PropName
+    ColumnName: ColumnName
     FKeyName: PropName
     InverseName: PropName
     IsNullable: bool
 }
 type CollectionNavigationProperty = {
     Type: TableName
-    Name: PropName
+    PropName: PropName
+    ColumnName: ColumnName
     InverseName: PropName
     IsNullable: bool
 }
@@ -69,8 +89,8 @@ with
         | Collection(c) -> c.Type
     member this.Name =
         match this with
-        | Single(s) -> s.Name
-        | Collection(c) -> c.Name
+        | Single(s) -> s.PropName
+        | Collection(c) -> c.PropName
     member this.InverseName =
         match this with
         | Single(s) -> s.InverseName
@@ -88,9 +108,9 @@ type Property =
 with
     member this.Name =
         match this with
-        | Primitive(p) -> p.Name
-        | PrimaryKey(pk) -> pk.Name
-        | ForeignKey(fk) -> fk.Name
+        | Primitive(p) -> p.PropName
+        | PrimaryKey(pk) -> pk.PropName
+        | ForeignKey(fk) -> fk.PropName
         | Navigation(n) -> n.Name
 
 type RegularTable = {

@@ -143,7 +143,8 @@ type Relation =
     //     | ManyToMany(r) -> r.KeyType
 
 type Field = {
-    Name: string
+    PropName: PropName
+    ColumnName: ColumnName
     Type: Type
     IsNullable: bool
 }

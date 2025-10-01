@@ -106,8 +106,8 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
 
             // Remove all files from destination path (except the folder itself)
             if Directory.Exists(destinationPath) then
-                Directory.GetFiles(destinationPath, "*GraphType.cs", SearchOption.AllDirectories)
-                |> Array.iter File.Delete
+                //Directory.GetFiles(destinationPath, "*GraphType.cs", SearchOption.AllDirectories)
+                //|> Array.iter File.Delete
                 Directory.GetFiles(destinationPath, "*GraphType.Generated.cs", SearchOption.AllDirectories)
                 |> Array.iter File.Delete
 
@@ -116,11 +116,18 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
                 try
                     let (EntityName entityName) = entity.Name
                     let content = contentGenerator.GenerateContent(entity)
-                    let outputFileName = $"{entityName}GraphType.cs"
-                    let outputPath = Path.Combine(destinationPath, outputFileName)
+
+                    let sourceOutputFileName = $"{entityName}GraphType.cs"
+                    let sourceOutputPath = Path.Combine(destinationPath, sourceOutputFileName)
+
+                    let generatedOutputFileName = $"{entityName}GraphType.Generated.cs"
+                    let generatedOutputPath = Path.Combine(destinationPath, generatedOutputFileName)
                     
                     // Write content to file (overwrite if exists)
-                    File.WriteAllText(outputPath, content)
+                    if not (File.Exists(sourceOutputPath)) then
+                        File.WriteAllText(sourceOutputPath, content.SourceFile)
+
+                    File.WriteAllText(generatedOutputPath, content.GeneratedFile)
                     // printfn $"Generated: {outputFileName}"
                     successCount <- successCount + 1
                 with

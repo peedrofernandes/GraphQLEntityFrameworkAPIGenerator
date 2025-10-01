@@ -14,19 +14,22 @@ type RelationParser() =
                 match property with
                 | PrimaryKey(p) -> 
                     Some { 
-                        Name = p.Name.ToString();
+                        PropName = p.PropName;
+                        ColumnName = p.ColumnName;
                         Type = Type.Id p.Type;
                         IsNullable = p.IsNullable;
                     }
                 | ForeignKey(p) -> 
                     Some { 
-                        Name = p.Name.ToString();
+                        PropName = p.PropName;
+                        ColumnName = p.ColumnName;
                         Type = Type.Id p.Type;
                         IsNullable = p.IsNullable;
                     }
                 | Primitive(p) -> 
                     Some { 
-                        Name = p.Name.ToString();
+                        PropName = p.PropName;
+                        ColumnName = p.ColumnName;
                         Type = Type.Primitive p.Type;
                         IsNullable = p.IsNullable;
                     }
@@ -55,35 +58,35 @@ type RelationParser() =
                 match otherTable, thisNavProp, thatNavProp with
                 | Regular(otherTable), Single(thisNavProp), Single(thatNavProp) ->
                     OneToOne {
-                        Name = RelationName (thisNavProp.Name.ToString());
+                        Name = RelationName (thisNavProp.PropName.ToString());
                         KeyType = otherTable.PrimaryKey.Type;
                         NavProp = thisNavProp;
                         BackwardsNavProp = thatNavProp;
                         SourceTable = table;
                         TargetTable = otherTable;
-                        Destination = EntityName (thisNavProp.Name.ToString());
+                        Destination = EntityName (thisNavProp.PropName.ToString());
                         IsNullable = thisNavProp.IsNullable;
                     } |> Seq.singleton
                 | Regular(otherTable), Single(thisNavProp), Collection(thatNavProp) ->
                     ManyToOne { 
-                        Name = RelationName (thisNavProp.Name.ToString()); 
+                        Name = RelationName (thisNavProp.PropName.ToString()); 
                         KeyType = otherTable.PrimaryKey.Type;
                         NavProp = thisNavProp;
                         BackwardsNavProp = thatNavProp;
                         SourceTable = table;
                         TargetTable = otherTable;
-                        Destination = EntityName (thisNavProp.Name.ToString());
+                        Destination = EntityName (thisNavProp.PropName.ToString());
                         IsNullable = thisNavProp.IsNullable;
                     } |> Seq.singleton
                 | Regular(otherTable), Collection(thisNavProp), Single(thatNavProp) ->
                     OneToMany {
-                        Name = RelationName (thisNavProp.Name.ToString());
+                        Name = RelationName (thisNavProp.PropName.ToString());
                         // KeyType = otherTable.PrimaryKey.Type;
                         NavProp = thisNavProp;
                         BackwardsNavProp = thatNavProp;
                         SourceTable = table;
                         TargetTable = otherTable;
-                        Destination = EntityName (thisNavProp.Name.ToString());
+                        Destination = EntityName (thisNavProp.PropName.ToString());
                         IsNullable = thisNavProp.IsNullable;
                     } |> Seq.singleton
                 | Join(joinTable), Collection(thisNavProp), Single(thatNavProp) ->
@@ -100,7 +103,7 @@ type RelationParser() =
                             match tables.TryFind nav.Type with
                             | Some (Regular(destination)) ->
                                 ManyToManyWithJoinTable {
-                                    Name = RelationName (nav.Name.ToString());
+                                    Name = RelationName (nav.PropName.ToString());
                                     // KeyType = destination.PrimaryKey.Type;
                                     NavProp = thisNavProp;
                                     JoinTableNavProp = nav;
@@ -111,16 +114,16 @@ type RelationParser() =
                                     Destination = EntityName (nav.Type.ToString());
                                     IsNullable = thisNavProp.IsNullable;
                                 }
-                            | _ -> failwith $"Destination table '{nav.Type}', for origin table '{table.Name}' and origin destination '{thisNavProp.Name}' is not a regular table (debug: 2)")
+                            | _ -> failwith $"Destination table '{nav.Type}', for origin table '{table.Name}' and origin destination '{thisNavProp.PropName}' is not a regular table (debug: 2)")
                     relations
                 | Regular(regularTable), Collection(thisNavProp), Collection(thatNavProp) ->
                     // Many to many relation without join table (collection both sides)
                     ManyToMany {
-                        Name = RelationName (thisNavProp.Name.ToString());
+                        Name = RelationName (thisNavProp.PropName.ToString());
                         // KeyType = regularTable.PrimaryKey.Type;
                         NavProp = thisNavProp;
                         BackwardsNavProp = thatNavProp;
-                        Destination = EntityName (thisNavProp.Name.ToString());
+                        Destination = EntityName (thisNavProp.PropName.ToString());
                         SourceTable = table;
                         TargetTable = regularTable;
                     } |> Seq.singleton
@@ -151,7 +154,8 @@ type RelationParser() =
             table.PrimitiveProperties
             |> Seq.map (fun p  ->
             {
-                Name = p.Name.ToString();
+                PropName = p.PropName;
+                ColumnName = p.ColumnName;
                 Type = Type.Primitive p.Type;
                 IsNullable = p.IsNullable
             })

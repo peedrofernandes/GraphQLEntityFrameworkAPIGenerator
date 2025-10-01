@@ -2,6 +2,7 @@ namespace GraphQLEntityFrameworkAPIGenerator.Impl
 
 open GraphQLEntityFrameworkAPIGenerator.Interfaces
 open GraphQLEntityFrameworkAPIGenerator.Types
+open System.Text.RegularExpressions
 
 type TableParser() =
     interface ITableParser with
@@ -70,18 +71,25 @@ type TableParser() =
                 // $4 = Type
                 // $5 = Name
 
-                let matches = System.Text.RegularExpressions.Regex.Matches(content, pattern);
+                let matches = Regex.Matches(content, pattern);
 
                 let properties : Property list =
                     matches
                     |> Seq.collect (fun match' ->
-                        let propName = match'.Groups.[5].Value.Trim()
+                        let attributesStr = match'.Groups.[1].Value.Trim()
+
+                        let propName = match'.Groups.[5].Value.Trim();
+                        let columnName = 
+                            let columnStr = Regex.Match(attributesStr, @"\[Column\(""(.*?)""\)\]").Groups.[1].Value.Trim()
+                            if columnStr.Length > 0 then 
+                                columnStr 
+                            else 
+                                propName
 
                         if ignoredProperties.ContainsKey(tableName) && ignoredProperties[tableName] |> List.exists (fun x -> x = propName) then
                             []
                         else
-
-                        let attributesStr = match'.Groups.[1].Value.Trim()
+                        
                         let typeStr = match'.Groups.[4].Value.Trim()
                         let cleanType = typeStr.Replace("?", "").Replace("<", "").Replace(">", "").Replace("ICollection", "").Trim()
                         
@@ -111,7 +119,7 @@ type TableParser() =
                         let isPrimitiveProperty = not hasVirtualKeyword && not isPrimaryKey && not isForeignKey
 
                         if isPrimaryKey && isForeignKey then
-                            let primaryKey = PrimaryKey { Type = mapIdType cleanType; Name = PropName propName; IsNullable = isNullable };
+                            let primaryKey = PrimaryKey { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable };
                             let foreignKey = 
                                 let correspondingNavPropName =
                                     matches
@@ -122,10 +130,10 @@ type TableParser() =
                                 if correspondingNavPropName.IsNone then
                                     failwith $"No corresponding nav prop name for {propName} foreign key"
                                 else
-                                    ForeignKey { Type = mapIdType cleanType; Name = PropName propName; IsNullable = isNullable; NavPropName = PropName correspondingNavPropName.Value }
+                                    ForeignKey { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable; NavPropName = PropName correspondingNavPropName.Value }
                             [primaryKey; foreignKey]
                         elif isPrimaryKey then
-                            PrimaryKey { Type = mapIdType cleanType; Name = PropName propName; IsNullable = isNullable }
+                            PrimaryKey { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable }
                             |> List.singleton
                         elif isForeignKey then
                             let correspondingNavPropName =
@@ -137,7 +145,7 @@ type TableParser() =
                             if correspondingNavPropName.IsNone then
                                 failwith $"No corresponding nav prop name for {propName} foreign key"
                             else
-                                ForeignKey { Type = mapIdType cleanType; Name = PropName propName; IsNullable = isNullable; NavPropName = PropName correspondingNavPropName.Value }
+                                ForeignKey { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable; NavPropName = PropName correspondingNavPropName.Value }
                             |> List.singleton
                         elif isNavigationProperty then
                             let inverseName = // Get from [InverseProperty("...")]
@@ -149,7 +157,7 @@ type TableParser() =
                             else
 
                             if isCollection then
-                                Navigation (Collection { Type = TableName cleanType; Name = PropName propName; IsNullable = isNullable; InverseName = PropName inverseName })
+                                Navigation (Collection { Type = TableName cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable; InverseName = PropName inverseName })
                                 |> List.singleton
                             else
                                 let correspondingForeignKeyName = 
@@ -159,10 +167,10 @@ type TableParser() =
                                 if correspondingForeignKeyName = "" then
                                     failwith $"No corresponding foreign key name for {propName} single navigation property"
                                 else
-                                    Navigation (Single { Type = TableName cleanType; Name = PropName propName; IsNullable = isNullable; FKeyName = PropName correspondingForeignKeyName; InverseName = PropName inverseName })
+                                    Navigation (Single { Type = TableName cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable; FKeyName = PropName correspondingForeignKeyName; InverseName = PropName inverseName })
                                 |> List.singleton
                         elif isPrimitiveProperty then
-                            Primitive { Type = mapPrimitiveType cleanType; Name = PropName propName; IsNullable = isNullable }
+                            Primitive { Type = mapPrimitiveType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable }
                             |> List.singleton
                         else
                             failwith $"Property '{propName}' in table '{tableName}' was not able to be classified")
@@ -224,7 +232,7 @@ type TableParser() =
                     properties
                     |> Seq.filter (fun property ->
                         match property with
-                        | Primitive(p) -> p.Name.ToString() <> "Index"
+                        | Primitive(p) -> p.PropName.ToString() <> "Index"
                         | _ -> false)
                     |> Seq.isEmpty
 
