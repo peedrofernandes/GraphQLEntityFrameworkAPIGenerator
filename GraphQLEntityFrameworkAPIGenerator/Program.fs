@@ -4,12 +4,13 @@ open System.IO
 open GraphQLEntityFrameworkAPIGenerator.Interfaces
 open GraphQLEntityFrameworkAPIGenerator.Impl
 open GraphQLEntityFrameworkAPIGenerator.Types
+open Microsoft.Extensions.Configuration
 
-let processEntityFiles (sourcePath: string) (destinationPath: string) =
+let processEntityFiles (category: Category) (sourcePath: string) (destinationPath: string) =
     // Initialize parsers and generators
     let tableParser = TableParser() :> ITableParser
     let relationParser = RelationParser() :> IRelationParser
-    let contentGenerator = ContentGenerator() :> IContentGenerator
+    let contentGenerator = ContentGenerator(category) :> IContentGenerator
     
     try
         // Validate source directory exists
@@ -21,126 +22,142 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
             Directory.CreateDirectory destinationPath |> ignore
             printfn $"Created destination directory: {destinationPath}"
 
-        let ignoredTables : string list = [
-            // Cooking tables
-            "GESE_CookingContext"
-            "CodeBuilder"
-            "CodeBuilderContainer"
-            "CodeBuilderContainersElement"
-            "CodeBuildersCodeBuilderContainer"
-            "MultiDriverPilotType"
-            "MultiSequencePilotType"
-            "MultiInputReadType"
-            "PrmPilotMultiSequence"
-            "PilotMultiSequenceConfig"
-            "PilotMultiSequenceConfigDetail"
-            "PilotMultiSequenceDetail"
-            "PilotMultiSequenceDetailsStep"
-            "PilotMultiSequenceStep"
-            // Refrigeration files
-            "GESE_RefrigerationContext"
-            "FaultSubCode"
-            "FaultCode"
-            "FaultPrioritiesDetail"
-            "FaultPrioritiesConfigurations_FaultPrioritiesDetail"
-            "FaultPrioritiesConfiguration"
-        ]
 
-        let ignoredProperties : Map<TableName, string list> =
-            Map [
-                TableName "Modifier", [ "ModifierType51"; "ModifierType61" ]
-                TableName "ModifierType", [ "ModifierModifierType51s"; "ModifierModifierType61s" ]
-                TableName "PilotType", [ "MultiDriverPilotType"; "MultiSequencePilotType" ]
-                TableName "ReadType", [ "MultiInputReadType" ]
-                TableName "PrmPilotMultiSequence", [ "MultiSequencePilotType" ]
-                TableName "ACUExpansionBoardConfiguration", [ "Boards" ]
-                TableName "Board", [ "ACUExpansionBoardConfiguration" ]
-                TableName "HMIExpansionBoardConfiguration", [ "Displays" ]
-                TableName "Display", [ "HMIExpansionBoardConfigurations" ]
+
+        let ignoredTables : string list = 
+            let cookingIgnoredTables : string list = [
+                "GESE_CookingContext"
+                "CodeBuilder"
+                "CodeBuilderContainer"
+                "CodeBuilderContainersElement"
+                "CodeBuildersCodeBuilderContainer"
+                "MultiDriverPilotType"
+                "MultiSequencePilotType"
+                "MultiInputReadType"
+                "PrmPilotMultiSequence"
+                "PilotMultiSequenceConfig"
+                "PilotMultiSequenceConfigDetail"
+                "PilotMultiSequenceDetail"
+                "PilotMultiSequenceDetailsStep"
+                "PilotMultiSequenceStep"
             ]
+            let refrigerationIgnoredTables : string list = [
+                "GESE_RefrigerationContext"
+                "FaultSubCode"
+                "FaultCode"
+                "FaultPrioritiesDetail"
+                "FaultPrioritiesConfigurations_FaultPrioritiesDetail"
+                "FaultPrioritiesConfiguration"
+            ]
+            match category with
+                | Cooking -> cookingIgnoredTables
+                | Refrigeration -> refrigerationIgnoredTables
+                | _ -> []
+
+        let ignoredProperties : Map<TableName, string list> = Map []
+            //Map [
+            //    TableName "Modifier", [ "ModifierType51"; "ModifierType61" ]
+            //    TableName "ModifierType", [ "ModifierModifierType51s"; "ModifierModifierType61s" ]
+            //    TableName "PilotType", [ "MultiDriverPilotType"; "MultiSequencePilotType" ]
+            //    TableName "ReadType", [ "MultiInputReadType" ]
+            //    TableName "PrmPilotMultiSequence", [ "MultiSequencePilotType" ]
+            //    TableName "ACUExpansionBoardConfiguration", [ "Boards" ]
+            //    TableName "Board", [ "ACUExpansionBoardConfiguration" ]
+            //    TableName "HMIExpansionBoardConfiguration", [ "Displays" ]
+            //    TableName "Display", [ "HMIExpansionBoardConfigurations" ]
+            //]
         
         // Get all .cs files from source directory
-        let entityFiles = 
+        let efModelFiles = 
             Directory.GetFiles(sourcePath, "*.cs", SearchOption.AllDirectories)
             |> Array.filter (fun filePath -> 
                 ignoredTables
                 |> List.exists filePath.Contains
                 |> not)
             
-        if entityFiles.Length = 0 then
+        if efModelFiles.Length = 0 then
             printfn "No .cs files found in source directory"
             0
         else
-            printfn $"Found {entityFiles.Length} entity files"
-            
-            // Step 1: Parse all entity files to create Table objects
-            let tables = 
-                entityFiles
-                |> Seq.choose (fun filePath ->
-                    try
-                        printfn $"Parsing file: {Path.GetFileName filePath}"
-                        let fileContent = File.ReadAllText filePath
-                        let table = tableParser.ParseTable (ignoredProperties, fileContent)
-                        Some table
-                    with
-                    | ex ->
-                        printfn $"Error parsing file {Path.GetFileName filePath}: {ex.Message}"
-                        None)
-                |> List.ofSeq
-            
-            printfn $"Successfully parsed {tables.Length} tables"
 
-            // Step 2: Convert the tables to a map
-            let tablesMap =
-                tables
-                |> List.map (fun t -> t.Name, t)
-                |> Map.ofList
+        printfn $"Found {efModelFiles.Length} EF Model"
 
-            // Step 3: Use RelationParser to create Entity objects
-            let entities = relationParser.ParseEntities tablesMap
-            printfn $"Generated {entities.Length} entities"
-            
-            // Step 4: Generate GraphQL type content for each entity and write to files
-            let mutable successCount = 0
-            let mutable errorCount = 0
+        let mutable fileParseSuccessCount = 0
+        let mutable fileParseErrorCount = 0
 
-            // Remove all files from destination path (except the folder itself)
-            if Directory.Exists(destinationPath) then
-                //Directory.GetFiles(destinationPath, "*GraphType.cs", SearchOption.AllDirectories)
-                //|> Array.iter File.Delete
-                Directory.GetFiles(destinationPath, "*GraphType.Generated.cs", SearchOption.AllDirectories)
-                |> Array.iter File.Delete
-
-            entities
-            |> List.iter (fun entity ->
+        // Step 1: Parse all entity files to create Table objects
+        let tables = 
+            efModelFiles
+            |> Seq.choose (fun filePath ->
                 try
-                    let (EntityName entityName) = entity.Name
-                    let content = contentGenerator.GenerateContent(entity)
-
-                    let sourceOutputFileName = $"{entityName}GraphType.cs"
-                    let sourceOutputPath = Path.Combine(destinationPath, sourceOutputFileName)
-
-                    let generatedOutputFileName = $"{entityName}GraphType.Generated.cs"
-                    let generatedOutputPath = Path.Combine(destinationPath, generatedOutputFileName)
-                    
-                    // Write content to file (overwrite if exists)
-                    if not (File.Exists(sourceOutputPath)) then
-                        File.WriteAllText(sourceOutputPath, content.SourceFile)
-
-                    File.WriteAllText(generatedOutputPath, content.GeneratedFile)
-                    // printfn $"Generated: {outputFileName}"
-                    successCount <- successCount + 1
+                    printfn $"Parsing file: {Path.GetFileName filePath}"
+                    let fileContent = File.ReadAllText filePath
+                    let table = tableParser.ParseTable (ignoredProperties, fileContent)
+                    fileParseSuccessCount <- fileParseSuccessCount + 1
+                    Some table
                 with
                 | ex ->
-                    let (EntityName entityName) = entity.Name
-                    printfn $"Error generating content for entity {entityName}: {ex.Message}"
-                    errorCount <- errorCount + 1)
+                    printfn $"Error parsing file {Path.GetFileName filePath}: {ex.Message}"
+                    fileParseErrorCount <- fileParseErrorCount + 1
+                    None)
+            |> List.ofSeq
             
-            printfn $"\nGeneration complete!"
-            printfn $"Success: {successCount} files"
-            printfn $"Errors: {errorCount} files"
+        printfn $"Successfully parsed {tables.Length} tables"
+
+        // Step 2: Convert the tables to a map
+        let tablesMap =
+            tables
+            |> List.map (fun t -> t.Name, t)
+            |> Map.ofList
+
+        // Step 3: Use RelationParser to create Entity objects
+        let entities = relationParser.ParseEntities tablesMap
+        printfn $"Generated {entities.Length} entities"
             
-            if errorCount = 0 then 0 else 1
+        // Step 4: Generate GraphQL type content for each entity and write to files
+        let mutable entityParseSuccessCount = 0
+        let mutable entityParseErrorCount = 0
+
+        // Remove all files from destination path (except the folder itself)
+        if Directory.Exists(destinationPath) then
+            //Directory.GetFiles(destinationPath, "*GraphType.cs", SearchOption.AllDirectories)
+            //|> Array.iter File.Delete
+            Directory.GetFiles(destinationPath, "*GraphType.Generated.cs", SearchOption.AllDirectories)
+            |> Array.iter File.Delete
+
+        entities
+        |> List.iter (fun entity ->
+            try
+                let (EntityName entityName) = entity.Name
+                let content = contentGenerator.GenerateContent(entity)
+
+                let sourceOutputFileName = $"{entityName}GraphType.cs"
+                let sourceOutputPath = Path.Combine(destinationPath, sourceOutputFileName)
+
+                let generatedOutputFileName = $"{entityName}GraphType.Generated.cs"
+                let generatedOutputPath = Path.Combine(destinationPath, generatedOutputFileName)
+                    
+                // Write content to file (overwrite if exists)
+                if not (File.Exists(sourceOutputPath)) then
+                    File.WriteAllText(sourceOutputPath, content.SourceFile)
+
+                File.WriteAllText(generatedOutputPath, content.GeneratedFile)
+                // printfn $"Generated: {outputFileName}"
+                entityParseSuccessCount <- entityParseSuccessCount + 1
+            with
+            | ex ->
+                let (EntityName entityName) = entity.Name
+                printfn $"Error generating content for entity {entityName}: {ex.Message}"
+                entityParseErrorCount <- entityParseErrorCount + 1)
+            
+        printfn $"\nGeneration complete!"
+        printfn $"EF Models result - Total: {efModelFiles.Length}; Success: {fileParseSuccessCount}; Failure: {fileParseErrorCount}"
+        printfn $"Entities result - Total: {entities.Length}; Success: {entityParseSuccessCount}; Failure: {entityParseErrorCount}"
+
+        if fileParseSuccessCount < ((tables.Length) / 2) then
+            printfn $"A lot of tables were not able to be parsed. Please verify whether you scaffolded the database correctly. This script needs data annotations on EF entities to work properly. It's HIGHLY ENCOURAGED that you use this command: `dotnet ef dbcontext scaffold \"<CONNECTION_STRING_HERE>\" Microsoft.EntityFrameworkCore.SqlServer --output-dir ./Models --data-annotations --force --no-build --use-database-names`"
+            
+        if (entityParseErrorCount = 0 && fileParseErrorCount = 0) then 0 else 1
             
     with
     | ex ->
@@ -149,26 +166,75 @@ let processEntityFiles (sourcePath: string) (destinationPath: string) =
 
 [<EntryPoint>]
 let main args =
+    let getCategoryFromConfig (config: IConfiguration) : Category =
+        let categoryString = config.GetValue<string>("CATEGORY")
+    
+        match categoryString.ToLower() with
+        | "cooking" -> Category.Cooking
+        | "cook" -> Category.Cooking
+        
+        | "dishwasher" -> Category.Dishwasher
+        | "dishwash" -> Category.Dishwasher
+        | "dish" -> Category.Dishwasher
+        
+        | "dryer" -> Category.Dryer
+        | "dry" -> Category.Dryer
+
+        | "washer" -> Category.HAWasher
+        | "washing" -> Category.HAWasher
+        | "wash" -> Category.HAWasher
+        | "hawasher" -> Category.HAWasher
+        | "hawashing" -> Category.HAWasher
+        | "hawash" -> Category.HAWasher
+        | "ha" -> Category.HAWasher
+        
+        | "refrigeration" -> Category.Refrigeration
+        | "refri" -> Category.Refrigeration
+        | "refrigerator" -> Category.Refrigeration
+
+        | "vawasher" -> Category.VAWasher
+        | "vawashing" -> Category.VAWasher
+        | "vawash" -> Category.VAWasher
+        | "va" -> Category.VAWasher
+        | value -> 
+            failwithf "Invalid or missing 'CATEGORY' configuration value: %s. Check launchSettings.json or environment variables." value
+
+    let getPathFromConfig (config: IConfiguration) : string =
+        let pathString = 
+            config.GetValue<string>("SOURCE_PATH")
+            |> Option.ofObj
+
+        if pathString.IsNone then
+            failwithf "No SOURCE_PATH. Please insert a valid directory path at launchSettings.json or environment variables that points to WP.GESE.WebAPIs project on your computer."
+        elif (not (pathString.Value.Replace("/", "").Replace("\\", "").ToLower().EndsWith("wp.gese.webapis"))) then
+            failwithf $"Invalid SOURCE_PATH {pathString}. Please insert a valid directory path at launchSettings.json or environment variables that points to WP.GESE.WebAPIs project on your computer."
+        else
+            pathString.Value
+
     try
-        match args with
-        | [| sourcePath; destinationPath |] ->
-            printfn "GraphQL Entity Framework API Generator"
-            printfn $"Source: {sourcePath}"
-            printfn $"Destination: {destinationPath}"
-            printfn ""
+        let configuration =
+            ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .Build()
+
+        printfn "GraphQL Entity Framework API Generator"
+
+        let category = getCategoryFromConfig configuration
+        let path = getPathFromConfig configuration
+
+        let categoryNamespace : string =
+            match category with
+            | Cooking -> "Cooking"
+            | Dishwasher -> "Dish"
+            | Dryer -> "Dryer"
+            | HAWasher -> "HA"
+            | Refrigeration -> "Refrigeration"
+            | VAWasher -> "VA"
+
+        let sourcePath = Path.Combine(path, $"WP.{categoryNamespace}.GESE.WebAPI", "Models")
+        let destinationPath = Path.Combine(path, $"WP.{categoryNamespace}.GESE.WebAPI", "GraphQL", "Types")
             
-            processEntityFiles sourcePath destinationPath
-            
-        | _ ->
-            printfn "Usage: GraphQLEntityFrameworkAPIGenerator.exe <source-folder> <destination-folder>"
-            printfn ""
-            printfn "Arguments:"
-            printfn "  source-folder      Path to folder containing Entity Framework entity files (.cs)"
-            printfn "  destination-folder Path to folder where GraphQL types will be generated"
-            printfn ""
-            printfn "Example:"
-            printfn "  GraphQLEntityFrameworkAPIGenerator.exe ./Models ./GraphQL/Types"
-            1
+        processEntityFiles category sourcePath destinationPath
     with
     | ex ->
         printfn $"Application error: {ex.Message}"

@@ -3,7 +3,7 @@ namespace GraphQLEntityFrameworkAPIGenerator.Impl
 open GraphQLEntityFrameworkAPIGenerator.Interfaces
 open GraphQLEntityFrameworkAPIGenerator.Types
 
-type ContentGenerator() =
+type ContentGenerator(category : Category) =
     let resolveTableName(name: TableName) : TableName =
         match name.ToString() with
         | "Attribute" -> TableName "Models.Attribute"
@@ -16,7 +16,7 @@ type ContentGenerator() =
         | _ -> name
 
     // private method, given a field, return the corresponding GraphQL field
-    member private this.MapField(field: Field) : string =
+    member private _.MapField(field: Field) : string =
         let mapBool(v: bool) =
             match v with
             | true -> "true"
@@ -65,7 +65,7 @@ type ContentGenerator() =
             | IdType.Float -> $$"""Field(t => t.{{propName}}, type: typeof(FloatGraphType), nullable: {{nullable}}).Name("{{name}}");"""
             | IdType.Short -> $$"""Field(t => t.{{propName}}, type: typeof(ShortGraphType), nullable: {{nullable}}).Name("{{name}}");"""
 
-    member private this.MapRelation(entity: Entity, relation: Relation) : string =
+    member private _.MapRelation(entity: Entity, relation: Relation) : string =
 
 
         match relation with
@@ -228,31 +228,51 @@ type ContentGenerator() =
                 });"""
 
     interface IContentGenerator with
+        member _.Category = category
+
         member _.GenerateContent(entity: Entity) : GeneratedContent =
             let (entityName, entityFields, entityRelations, table) = (entity.Name, entity.Fields, entity.Relations, entity.CorrespondingTable)
 
             let mappedFields : string list = 
                 entityFields 
-                |> Seq.map (ContentGenerator().MapField) 
+                |> Seq.map (ContentGenerator(category).MapField) 
                 |> List.ofSeq
 
             let mappedRelations : string list = 
                 entityRelations 
-                |> Seq.map (fun relation -> ContentGenerator().MapRelation(entity, relation)) 
+                |> Seq.map (fun relation -> ContentGenerator(category).MapRelation(entity, relation)) 
                 |> List.ofSeq
+
+            let categoryNamespace : string =
+                match category with
+                | Cooking -> "Cooking"
+                | Dishwasher -> "Dish"
+                | Dryer -> "Dryer"
+                | HAWasher -> "HA"
+                | Refrigeration -> "Refrigeration"
+                | VAWasher -> "VA"
+
+            let categoryDbContext : string =
+                match category with
+                | Cooking -> "GESE_CookingContext"
+                | Dishwasher -> "GESE_DishwasherContext"
+                | Dryer -> "GESE_DryerContext"
+                | HAWasher -> "GESE_HAWasherContext"
+                | Refrigeration -> "GESE_RefrigerationContext"
+                | VAWasher -> "GESE_VAWasherContext"
 
             let generatedFile = $$"""
 using GraphQL.DataLoader;
 using GraphQL.Types;
 using Microsoft.EntityFrameworkCore;
-using WP.VA.GESE.WebAPI.Models;
+using WP.{{categoryNamespace}}.GESE.WebAPI.Models;
 #pragma warning disable CS8604, CS8073, CS8619
 
-namespace WP.VA.GESE.WebAPI.GraphQL.Types
+namespace WP.{{categoryNamespace}}.GESE.WebAPI.GraphQL.Types
 {
     public partial class {{entity.Name}}GraphType : ObjectGraphType<{{resolveEntityName entity.Name}}>
     {
-        public {{entity.Name}}GraphType(GESE_VAWasherContext dbContext, IDataLoaderContextAccessor dataLoaderAccessor)
+        public {{entity.Name}}GraphType({{categoryDbContext}} dbContext, IDataLoaderContextAccessor dataLoaderAccessor)
         {
             {{(mappedFields @ mappedRelations) |> String.concat "\n\t\t\t"}}
 
@@ -266,14 +286,14 @@ namespace WP.VA.GESE.WebAPI.GraphQL.Types
 using GraphQL.DataLoader;
 using GraphQL.Types;
 using Microsoft.EntityFrameworkCore;
-using WP.VA.GESE.WebAPI.Models;
+using WP.{{categoryNamespace}}.GESE.WebAPI.Models;
 #pragma warning disable CS8604, CS8073, CS8619
 
-namespace WP.VA.GESE.WebAPI.GraphQL.Types
+namespace WP.{{categoryNamespace}}.GESE.WebAPI.GraphQL.Types
 {
     public partial class {{entity.Name}}GraphType : ObjectGraphType<{{resolveEntityName entity.Name}}>
     {
-        public void Partial{{entity.Name}}GraphType(GESE_VAWasherContext dbContext, IDataLoaderContextAccessor dataLoaderAccessor)
+        public void Partial{{entity.Name}}GraphType({{categoryDbContext}} dbContext, IDataLoaderContextAccessor dataLoaderAccessor)
         {
             // Your code goes here. Avoid modifying the .Generated.cs files.
         }

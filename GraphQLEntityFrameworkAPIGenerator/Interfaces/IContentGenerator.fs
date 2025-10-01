@@ -8,4 +8,5 @@ type GeneratedContent = {
 }
 
 type IContentGenerator =
-    abstract member GenerateContent : entity: Entity -> GeneratedContent
+    abstract member Category : Category
+    abstract member GenerateContent : Entity -> GeneratedContent

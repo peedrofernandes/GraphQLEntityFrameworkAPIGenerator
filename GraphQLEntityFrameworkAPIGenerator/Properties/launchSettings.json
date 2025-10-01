@@ -2,8 +2,10 @@
   "profiles": {
     "GraphQLEntityFrameworkAPIGenerator": {
       "commandName": "Project",
-      "commandLineArgs": "C:\\projects\\whirlpool\\WP.GESE.WebAPIs\\WP.VA.GESE.WebAPI\\Models C:\\projects\\whirlpool\\WP.GESE.WebAPIs\\WP.VA.GESE.WebAPI\\GraphQL\\Types",
-      "workingDirectory": "C:\\projects\\whirlpool\\GraphQLEntityFrameworkAPIGenerator"
+      "environmentVariables": {
+        "CATEGORY": "dryer",
+        "SOURCE_PATH": "C:\\projects\\whirlpool\\WP.GESE.WebAPIs"
+      }
     },
     "WSL": {
       "commandName": "WSL2",

@@ -36,6 +36,14 @@ module StringUtils =
         else
             name + "s"
 
+type Category =
+    | Cooking
+    | Dishwasher
+    | Dryer
+    | HAWasher
+    | Refrigeration
+    | VAWasher
+
 type PrimitiveType =
     | Int
     | Byte

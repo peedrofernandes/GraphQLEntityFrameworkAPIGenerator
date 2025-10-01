@@ -1,9 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="Properties\launchSettings.json" />
     <Compile Include="Types\Types.fs" />
     <Compile Include="Types\Table.fs" />
     <Compile Include="Types\Entity.fs" />
@@ -15,4 +16,12 @@
     <Compile Include="Impl\TableParser.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.9" />
+	</ItemGroup>
 </Project>
