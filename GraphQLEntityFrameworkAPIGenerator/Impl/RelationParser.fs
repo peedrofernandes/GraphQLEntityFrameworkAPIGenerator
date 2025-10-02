@@ -12,37 +12,48 @@ type RelationParser() =
             table.Properties
             |> List.collect (fun property  ->
                 match property with
-                | PrimaryKey(pk) ->
+                | Property.PrimaryKey pk ->
                     match pk with
-                    | PrimaryKeyProperty.Single(pk) -> 
+                    | PrimaryKeyProperty.Single pk -> 
                         { 
                             PropName = pk.PropName;
                             ColumnName = pk.ColumnName;
-                            Type = Type.Id pk.Type;
+                            Type = FieldType.Id pk.Type;
                             IsNullable = false;
                         } |> List.singleton
-                    | PrimaryKeyProperty.Composite(pk) ->
+                    | PrimaryKeyProperty.Composite pk ->
                         pk.Keys
                         |> List.map (fun pk -> 
                             { 
                                 PropName = pk.PropName;
                                 ColumnName = pk.ColumnName;
-                                Type = Type.Id pk.Type;
+                                Type = FieldType.Id pk.Type;
                                 IsNullable = false;
                             })
                         |> List.ofSeq
-                | ForeignKey(p) -> 
+                | Property.ForeignKey p -> 
+                    match p with
+                    | ForeignKeyProperty.Single fk ->
+                        { 
+                            PropName = fk.PropName;
+                            ColumnName = fk.ColumnName;
+                            Type = FieldType.Id fk.Type;
+                            IsNullable = false;
+                        } |> List.singleton
+                    | ForeignKeyProperty.Composite fk ->
+                        fk.Keys
+                        |> List.map (fun fk ->
+                        {
+                            PropName = fk.PropName;
+                            ColumnName = fk.ColumnName;
+                            Type = FieldType.Id fk.Type;
+                            IsNullable = false;
+                        }) |> List.ofSeq
+                | Property.Primitive(p) -> 
                     { 
                         PropName = p.PropName;
                         ColumnName = p.ColumnName;
-                        Type = Type.Id p.Type;
-                        IsNullable = p.IsNullable;
-                    } |> List.singleton
-                | Primitive(p) -> 
-                    { 
-                        PropName = p.PropName;
-                        ColumnName = p.ColumnName;
-                        Type = Type.Primitive p.Type;
+                        Type = FieldType.Primitive p.Type;
                         IsNullable = p.IsNullable;
                     } |> List.singleton
                 | _ -> [])
@@ -71,7 +82,6 @@ type RelationParser() =
                 | Regular(otherTable), Single(thisNavProp), Single(thatNavProp) ->
                     OneToOne {
                         Name = RelationName (thisNavProp.PropName.ToString());
-                        KeyType = otherTable.PrimaryKey.Type;
                         NavProp = thisNavProp;
                         BackwardsNavProp = thatNavProp;
                         SourceTable = table;
@@ -167,7 +177,7 @@ type RelationParser() =
             {
                 PropName = p.PropName;
                 ColumnName = p.ColumnName;
-                Type = Type.Primitive p.Type;
+                Type = FieldType.Primitive p.Type;
                 IsNullable = p.IsNullable
             })
             |> List.ofSeq

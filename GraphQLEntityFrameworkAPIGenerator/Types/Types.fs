@@ -86,7 +86,7 @@ with
         | DateTimeOffset -> "DateTimeOffset"
         | TimeSpan -> "TimeSpan"
         | Bool -> "bool"
-type IdType =
+type SingleIdType =
     | Int
     | Byte
     | String
@@ -94,18 +94,33 @@ type IdType =
     | Short
     | Bool
     | Float
-    | Composite of IdType list
 with
     override this.ToString() : string =
         match this with
-        | Int -> "int"
-        | Byte -> "byte"
-        | String -> "string"
-        | Guid -> "Guid"
-        | Short -> "short"
-        | Bool -> "bool"
-        | Float -> "float"
-        | Composite(ids) -> $"""({ids |> List.map (fun id -> id.ToString()) |> String.concat ", "})"""
+            | Int -> "int"
+            | Byte -> "byte"
+            | String -> "string"
+            | Guid -> "Guid"
+            | Short -> "short"
+            | Bool -> "bool"
+            | Float -> "float"
+type CompositeIdType = {
+    Ids: SingleIdType list
+}
+with
+    override this.ToString() : string =
+        this.Ids
+        |> List.map (fun id -> id.ToString()) 
+        |> String.concat ", " 
+        |> (fun str -> $"({str})")
+type IdType =
+    | Single of SingleIdType
+    | Composite of CompositeIdType
+with
+    override this.ToString() : string =
+        match this with
+        | Single s -> s.ToString()
+        | Composite c -> c.ToString()
 type Type =
     | Primitive of PrimitiveType
     | Id of IdType

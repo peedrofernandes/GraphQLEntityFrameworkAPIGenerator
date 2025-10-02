@@ -24,8 +24,8 @@ let processEntityFiles (category: Category) (sourcePath: string) (destinationPat
 
 
 
-        let ignoredTables : string list = 
-            let cookingIgnoredTables : string list = [
+        let ignoredFiles : string list = 
+            let cookingIgnoredFiles : string list = [
                 "GESE_CookingContext"
                 "CodeBuilder"
                 "CodeBuilderContainer"
@@ -41,7 +41,7 @@ let processEntityFiles (category: Category) (sourcePath: string) (destinationPat
                 "PilotMultiSequenceDetailsStep"
                 "PilotMultiSequenceStep"
             ]
-            let refrigerationIgnoredTables : string list = [
+            let refrigerationIgnoredFiles : string list = [
                 "GESE_RefrigerationContext"
                 "FaultSubCode"
                 "FaultCode"
@@ -49,9 +49,16 @@ let processEntityFiles (category: Category) (sourcePath: string) (destinationPat
                 "FaultPrioritiesConfigurations_FaultPrioritiesDetail"
                 "FaultPrioritiesConfiguration"
             ]
+            let dryerIgnoredFiles : string list = [
+                "GESE_DryerContext"
+                "AdditionalRelationshipStatement"
+                "CategoryAdditionalRelationshipXMLConfiguration"
+                "PlatformAdditionalRelationshipsXMLConfiguration"
+            ]
             match category with
-                | Cooking -> cookingIgnoredTables
-                | Refrigeration -> refrigerationIgnoredTables
+                | Cooking -> cookingIgnoredFiles
+                | Refrigeration -> refrigerationIgnoredFiles
+                | Dryer -> dryerIgnoredFiles
                 | _ -> []
 
         let ignoredProperties : Map<TableName, string list> = Map []
@@ -71,7 +78,7 @@ let processEntityFiles (category: Category) (sourcePath: string) (destinationPat
         let efModelFiles = 
             Directory.GetFiles(sourcePath, "*.cs", SearchOption.AllDirectories)
             |> Array.filter (fun filePath -> 
-                ignoredTables
+                ignoredFiles
                 |> List.exists filePath.Contains
                 |> not)
             

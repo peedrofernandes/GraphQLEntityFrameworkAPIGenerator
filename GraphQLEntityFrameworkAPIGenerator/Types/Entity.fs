@@ -142,10 +142,14 @@ type Relation =
     //     | ManyToManyWithJoinTable(r) -> r.KeyType
     //     | ManyToMany(r) -> r.KeyType
 
+type FieldType =
+    | Primitive of PrimitiveType
+    | Id of SingleIdType
+
 type Field = {
     PropName: PropName
     ColumnName: ColumnName
-    Type: Type
+    Type: FieldType
     IsNullable: bool
 }
 

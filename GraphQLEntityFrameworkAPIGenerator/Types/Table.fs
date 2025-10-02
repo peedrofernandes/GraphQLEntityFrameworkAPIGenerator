@@ -52,7 +52,7 @@ type PrimitiveProperty = {
     IsNullable: bool
 }
 type SinglePrimaryKeyProperty = {
-    Type: IdType
+    Type: SingleIdType
     PropName: PropName
     ColumnName: ColumnName
 }
@@ -65,20 +65,31 @@ type PrimaryKeyProperty =
 with
     member this.Type : IdType =
         match this with
-        | Single(s) -> s.Type
-        | Composite(c) -> c.Keys |> List.map (fun k -> k.Type) |> (fun ts -> IdType.Composite ts)
-type ForeignKeyProperty = {
-    Type: IdType
+        | Single(s) -> IdType.Single s.Type
+        | Composite(c) -> c.Keys |> List.map (fun k -> k.Type) |> (fun ts -> IdType.Composite { Ids = ts })
+type SingleForeignKeyProperty = {
+    Type: SingleIdType
     PropName: PropName
     ColumnName: ColumnName
-    NavPropName: PropName
     IsNullable: bool
 }
+type CompositeForeignKeyProperty = {
+    Keys: SingleForeignKeyProperty list
+}
+with
+    member this.Type : CompositeIdType =
+        this.Keys
+        |> List.map (fun k -> k.Type)
+        |> fun ts -> { Ids = ts }
+type ForeignKeyProperty =
+    | Single of SingleForeignKeyProperty
+    | Composite of CompositeForeignKeyProperty
+
 type SingleNavigationProperty = {
     Type: TableName
     PropName: PropName
     ColumnName: ColumnName
-    FKeyName: PropName
+    ForeignKey: ForeignKeyProperty
     InverseName: PropName
     IsNullable: bool
 }

@@ -4,6 +4,20 @@ open GraphQLEntityFrameworkAPIGenerator.Interfaces
 open GraphQLEntityFrameworkAPIGenerator.Types
 open System.Text.RegularExpressions
 
+type ExtractedData = {
+    PropName: string
+    ColumnName: string
+    Type: string
+    IsNullable: bool
+    IsCollection: bool
+    IsPrimaryKey: bool
+    IsForeignKey: bool
+    IsNavigationProperty: bool
+    IsPrimitiveProperty: bool
+    InverseName: string // Exclusive for navigation properties
+    CorrespondingForeignKeyNames: string list // Exclusive for single (not collection) navigation properties
+}
+
 type TableParser() =
     interface ITableParser with
         member _.ParseTable(ignoredProperties: Map<TableName, string list>, fileContent: string) : Table =
@@ -50,15 +64,15 @@ type TableParser() =
                 | "timespan" -> PrimitiveType.TimeSpan
                 | _ -> failwith $"Unknown primitive type: {typeStr}"
 
-            let mapIdType (typeStr: string) : IdType =
+            let mapIdType (typeStr: string) : SingleIdType =
                 match typeStr.ToLower() with
-                | "int" -> IdType.Int
-                | "byte" -> IdType.Byte
-                | "string" -> IdType.String
-                | "guid" -> IdType.Guid
-                | "short" -> IdType.Short
-                | "bool" -> IdType.Bool
-                | "float" -> IdType.Float
+                | "int" -> SingleIdType.Int
+                | "byte" -> SingleIdType.Byte
+                | "string" -> SingleIdType.String
+                | "guid" -> SingleIdType.Guid
+                | "short" -> SingleIdType.Short
+                | "bool" -> SingleIdType.Bool
+                | "float" -> SingleIdType.Float
                 | _ -> failwith $"Unknown ID type: {typeStr}"
 
             let parseProperties (content: string) : Property list =
@@ -71,25 +85,17 @@ type TableParser() =
                 // $4 = Type
                 // $5 = Name
 
-                let matches = Regex.Matches(content, pattern);
-
-                let properties : Property list =
-                    matches
-                    |> Seq.collect (fun match' ->
+                let extractDataFromMatches (matches : MatchCollection) : ExtractedData list =
+                    let extractDataFromMatch (matches : MatchCollection, match': Match) : ExtractedData =
                         let attributesStr = match'.Groups.[1].Value.Trim()
-
                         let propName = match'.Groups.[5].Value.Trim();
                         let columnName = 
-                            let columnStr = Regex.Match(attributesStr, @"\[Column\(""(.*?)""\)\]").Groups.[1].Value.Trim()
-                            if columnStr.Length > 0 then 
-                                columnStr 
-                            else 
-                                propName
+                                let columnStr = Regex.Match(attributesStr, @"\[Column\(""(.*?)""\)\]").Groups.[1].Value.Trim()
+                                if columnStr.Length > 0 then 
+                                    columnStr 
+                                else 
+                                    propName
 
-                        if ignoredProperties.ContainsKey(tableName) && ignoredProperties[tableName] |> List.exists (fun x -> x = propName) then
-                            []
-                        else
-                        
                         let typeStr = match'.Groups.[4].Value.Trim()
                         let cleanType = typeStr.Replace("?", "").Replace("<", "").Replace(">", "").Replace("ICollection", "").Trim()
 
@@ -98,118 +104,142 @@ type TableParser() =
                         let isNullable = typeStr.Contains("?")
                         let isCollection = typeStr.Contains("ICollection")
 
-                        let isPrimaryKey = hasKeyAttribute  
+                        let isPrimaryKey = hasKeyAttribute
 
                         let isForeignKey =
                             matches
                             |> Seq.exists (fun m -> 
                                 let containsForeignKeyAttribute = m.Groups.[1].Value.Trim().ToString().Contains($"[ForeignKey(\"{propName}\")]")
                                 let containsICollection = m.Groups.[4].Value.Trim().ToString().Contains("ICollection")
-                                
                                 containsForeignKeyAttribute && not containsICollection)
 
                         let isNavigationProperty = hasVirtualKeyword && not isPrimaryKey && not isForeignKey
                         let isPrimitiveProperty = not hasVirtualKeyword && not isPrimaryKey && not isForeignKey
 
-                        if isPrimaryKey && isForeignKey then
-                            let primaryKey = PrimaryKey (PrimaryKeyProperty.Single { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; });
-                            let foreignKey = 
-                                let correspondingNavPropName =
-                                    matches
-                                    |> Seq.filter (fun m -> m.Groups.[1].Value.Trim().ToString().Contains $"[ForeignKey(\"{propName}\")]")
-                                    |> Seq.map (fun m -> m.Groups.[5].Value.Trim().ToString())
-                                    |> Seq.tryHead
+                        let inverseName = // Get from [InverseProperty("...")]
+                            System.Text.RegularExpressions.Regex.Match(attributesStr, @"\[InverseProperty\(""(.*?)""\)\]")
+                            |> fun m -> m.Groups.[1].Value.ToString()
 
-                                if correspondingNavPropName.IsNone then
-                                    failwith $"No corresponding nav prop name for {propName} foreign key"
-                                else
-                                    ForeignKey { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable; NavPropName = PropName correspondingNavPropName.Value }
-                            [primaryKey; foreignKey]
-                        elif isPrimaryKey then
-                            PrimaryKey (PrimaryKeyProperty.Single { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; })
-                            |> List.singleton
-                        elif isForeignKey then
-                            let correspondingNavPropName =
-                                matches
-                                |> Seq.filter (fun m -> m.Groups.[1].Value.Trim().ToString().Contains $"[ForeignKey(\"{propName}\")]")
-                                |> Seq.map (fun m -> m.Groups.[5].Value.Trim().ToString())
-                                |> Seq.tryHead
+                        let correspondingForeignKeyNames : string list = // Get from [ForeignKey("[f1]", "[f2]", "...")]
+                            let foreignKeyAttributeInsideParenthesis = Regex.Match(attributesStr, @"\[ForeignKey\((.*)\)\]").Groups.[1].Value.ToString()
+                            let foreignKeyAttributeInternalValues = 
+                                Regex.Matches(foreignKeyAttributeInsideParenthesis, @"""""?(\w+)["",]?""")
+                                |> Seq.map (fun x -> x.Groups.[1].Value)
+                                |> List.ofSeq
+                            foreignKeyAttributeInternalValues
 
-                            if correspondingNavPropName.IsNone then
-                                failwith $"No corresponding nav prop name for {propName} foreign key"
-                            else
-                                ForeignKey { Type = mapIdType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable; NavPropName = PropName correspondingNavPropName.Value }
-                            |> List.singleton
-                        elif isNavigationProperty then
-                            let inverseName = // Get from [InverseProperty("...")]
-                                System.Text.RegularExpressions.Regex.Match(attributesStr, @"\[InverseProperty\(""(.*?)""\)\]")
-                                |> fun m -> m.Groups.[1].Value.ToString()
+                        {
+                            PropName = propName
+                            ColumnName = columnName
+                            Type = cleanType
+                            
+                            IsNullable = isNullable
+                            IsCollection = isCollection
+                            IsPrimaryKey = isPrimaryKey
+                            IsForeignKey = isForeignKey
+                            IsNavigationProperty = isNavigationProperty
+                            IsPrimitiveProperty = isPrimitiveProperty
+                            
+                            InverseName = inverseName
+                            CorrespondingForeignKeyNames = correspondingForeignKeyNames
+                        }
 
-                            if inverseName = "" then
-                                failwith $"No inverse name for {propName} navigation property"
-                            else
+                    matches |> Seq.map (fun m -> extractDataFromMatch(matches, m)) |> List.ofSeq
 
-                            if isCollection then
-                                Navigation (Collection { Type = TableName cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable; InverseName = PropName inverseName })
-                                |> List.singleton
-                            else
-                                let correspondingForeignKeyName = 
-                                    System.Text.RegularExpressions.Regex.Match(attributesStr, @"\[ForeignKey\(""(.*?)""\)\]")
-                                    |> (fun m -> m.Groups.[1].Value.ToString())
+                let matches = Regex.Matches(content, pattern);
 
-                                if correspondingForeignKeyName = "" then
-                                    failwith $"No corresponding foreign key name for {propName} single navigation property"
-                                else
-                                    Navigation (Single { Type = TableName cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable; FKeyName = PropName correspondingForeignKeyName; InverseName = PropName inverseName })
-                                |> List.singleton
-                        elif isPrimitiveProperty then
-                            Primitive { Type = mapPrimitiveType cleanType; PropName = PropName propName; ColumnName = ColumnName columnName; IsNullable = isNullable }
-                            |> List.singleton
+                let extractedData = extractDataFromMatches matches
+                
+                let primaryKeys : SinglePrimaryKeyProperty list =
+                    extractedData
+                    |> List.filter (fun m -> m.IsPrimaryKey)
+                    |> List.map (fun m -> { Type = mapIdType m.Type; PropName = PropName m.PropName; ColumnName = ColumnName m.ColumnName; })
+
+                let finalGroupedPrimaryKey : PrimaryKeyProperty option =
+                    primaryKeys
+                    |> (fun pks ->
+                        if pks.Length = 0 then
+                            None
+                        elif pks.Length = 1 then
+                            Some (PrimaryKeyProperty.Single pks.Head)
                         else
-                            failwith $"Property '{propName}' in table '{tableName}' was not able to be classified")
-                    |> (fun props ->
-                            let primaryKeys : SinglePrimaryKeyProperty list =
-                                props
-                                |> Seq.choose (fun p ->
-                                    match p with
-                                    | PrimaryKey(pk) -> 
+                            Some (PrimaryKeyProperty.Composite { Keys = pks }))
+
+                let foreignKeys : SingleForeignKeyProperty list =
+                    extractedData
+                    |> List.filter (fun m -> m.IsForeignKey)
+                    |> List.map (fun m -> { Type = mapIdType m.Type; PropName = PropName m.PropName; ColumnName = ColumnName m.ColumnName; IsNullable = m.IsNullable })
+
+                let navigationProperties : NavigationProperty list =
+                    extractedData
+                    |> List.filter (fun m -> m.IsNavigationProperty)
+                    |> List.map (fun m -> 
+                        if m.InverseName = "" then
+                            failwith $"No inverse name for {m.PropName} navigation property"
+                        else
+                        
+                        if m.IsCollection then
+                            NavigationProperty.Collection { Type = TableName m.Type; PropName = PropName m.PropName; ColumnName = ColumnName m.ColumnName; IsNullable = m.IsNullable; InverseName = PropName m.InverseName }
+                        else
+
+                        if m.CorrespondingForeignKeyNames.Length = 0 then
+                            // If this is a navigation property without at least one corresponding foreign key name, then the foreign key is the primary key itself.
+                            // (very rare case - Only available for PilotTypes -> MultiDriverPilotTypes and ReadTypes -> MultiInputReadTypes)
+                            let foreignKey : ForeignKeyProperty =
+                                let fk = 
+                                    match finalGroupedPrimaryKey with
+                                    | Some pk ->
                                         match pk with
-                                        | PrimaryKeyProperty.Single(p) -> Some (p)
-                                        | _ -> None
-                                    | _ -> None)
-                                |> List.ofSeq
-                            let otherProps : Property list =
-                                props
-                                |> Seq.filter (fun p ->
-                                    match p with
-                                    | PrimaryKey(pk) -> false
-                                    | _ -> true)
-                                |> List.ofSeq
+                                        | PrimaryKeyProperty.Composite c -> failwith $"The {m.PropName} navigation property on table '{tableName}' has no [ForeignKey] attribute. The default behavior on this case is to assign the primary key itself as the foreign key, but it seems like the primary key of this table is composite (this case is unhandled)."
+                                        | PrimaryKeyProperty.Single s -> ForeignKeyProperty.Single { Type = s.Type; PropName = s.PropName; ColumnName = s.ColumnName; IsNullable = false }
+                                    | _ -> failwith $"The {m.PropName} navigation property on table '{tableName}' has no [ForeignKey] attribute. The default behavior on this case is to assign the primary key itself as the foreign key, but it seems like the primary key of this table is composite (this case is unhandled)."
 
-                            if primaryKeys.Length <= 0 then
-                                failwith $"No primary keys found for table {tableName}"
-                            elif primaryKeys.Length = 1 then
-                                otherProps
-                                |> List.append [primaryKeys |> List.head |> (fun x -> PrimaryKey (PrimaryKeyProperty.Single x))]
-                            else                                otherProps
-                                |> List.append [primaryKeys |> (fun x -> PrimaryKey (PrimaryKeyProperty.Composite { Keys = x }))]
-                        )
-                    |> List.ofSeq
-                    |> (fun props -> // Final validation
-                        let primaryKeys = 
-                            props
-                            |> Seq.choose (fun property ->
-                                match property with
-                                | PrimaryKey(p) -> Some p
-                                | _ -> None)
-                            |> Seq.toList
+                                fk
 
-                        if primaryKeys.Length > 1 then
-                            failwith $"Table '{tableName}' has more than 1 primary key"
+                            NavigationProperty.Single { Type = TableName m.Type; PropName = PropName m.PropName; ColumnName = ColumnName m.ColumnName; IsNullable = m.IsNullable; InverseName = PropName m.InverseName; ForeignKey = foreignKey }
                         else
 
-                        props)
-                    |> List.ofSeq
+                        let foreignKey : ForeignKeyProperty =
+                            let correspondingSingleForeignKeys =
+                                foreignKeys
+                                |> List.filter (fun fk -> 
+                                    m.CorrespondingForeignKeyNames 
+                                    |> List.exists (fun n -> n = fk.ColumnName.ToString()))
+                                |> List.ofSeq
+
+                            if correspondingSingleForeignKeys.Length = 0 then
+                                failwith $"""No corresponding foreign keys were found for names {m.CorrespondingForeignKeyNames |> String.concat ", "} for table {tableName}"""
+                            elif correspondingSingleForeignKeys.Length = 1 then
+                                ForeignKeyProperty.Single correspondingSingleForeignKeys.Head
+                            else
+                                ForeignKeyProperty.Composite { Keys = correspondingSingleForeignKeys }
+
+                        NavigationProperty.Single { Type = TableName m.Type; PropName = PropName m.PropName; ColumnName = ColumnName m.ColumnName; IsNullable = m.IsNullable; InverseName = PropName m.InverseName; ForeignKey = foreignKey }
+                    )
+
+                let primitiveProperties : PrimitiveProperty list =
+                    extractedData
+                    |> List.filter (fun m -> m.IsPrimitiveProperty)
+                    |> List.map (fun m -> 
+                        { Type = mapPrimitiveType m.Type; PropName = PropName m.PropName; ColumnName = ColumnName m.ColumnName; IsNullable = m.IsNullable })
+                
+                let finalGroupedForeignKeys : ForeignKeyProperty list =
+                    navigationProperties
+                    |> List.choose (fun n -> 
+                        match n with
+                        | NavigationProperty.Single s -> Some s.ForeignKey
+                        | NavigationProperty.Collection _ -> None)
+
+                let properties : Property list = 
+                    let pk =
+                        match finalGroupedPrimaryKey with
+                        | Some pk -> [Property.PrimaryKey pk]
+                        | None -> []
+
+                    pk
+                    |> List.append (primitiveProperties |> List.map (fun x -> Property.Primitive x))
+                    |> List.append (navigationProperties |> List.map (fun x -> Property.Navigation x))
+                    |> List.append (finalGroupedForeignKeys |> List.map (fun x -> Property.ForeignKey x))
 
                 properties
 
@@ -221,68 +251,69 @@ type TableParser() =
                     properties
                     |> List.choose (fun property ->
                         match property with
-                        | Primitive(p) -> Some p
+                        | Property.Primitive(p) -> Some p
                         | _ -> None)
                 View { Name = tableName; PrimitiveProperties = primitiveProps }
             else
-                let hasPrimaryKey =
-                    properties
-                    |> Seq.choose (fun property ->
-                        match property with
-                        | PrimaryKey(p) -> Some p
-                        | _ -> None)
-                    |> Seq.isEmpty
-                    |> not
 
-                let hasOnlyTwoNavigationProperties = 
-                    properties
-                    |> Seq.choose (fun property ->
-                        match property with
-                        | Navigation(p) -> Some p
-                        | _ -> None)
-                    |> Seq.length = 2
-                let hasOnlyTwoForeignKeys =
-                    properties
-                    |> Seq.choose (fun property ->
-                        match property with
-                        | ForeignKey(p) -> Some p
-                        | _ -> None)
-                    |> Seq.length = 2
-                let hasNoOtherPropertiesOtherThanIndexAndPrimaryKey = 
-                    properties
-                    |> Seq.filter (fun property ->
-                        match property with
-                        | Primitive(p) -> p.PropName.ToString() <> "Index"
-                        | _ -> false)
-                    |> Seq.isEmpty
+            let hasPrimaryKey =
+                properties
+                |> Seq.choose (fun property ->
+                    match property with
+                    | PrimaryKey(p) -> Some p
+                    | _ -> None)
+                |> Seq.isEmpty
+                |> not
 
-                let isJoinTable : bool = (not hasPrimaryKey) || (hasOnlyTwoNavigationProperties && hasOnlyTwoForeignKeys && hasNoOtherPropertiesOtherThanIndexAndPrimaryKey)
+            let hasOnlyTwoNavigationProperties = 
+                properties
+                |> Seq.choose (fun property ->
+                    match property with
+                    | Navigation(p) -> Some p
+                    | _ -> None)
+                |> Seq.length = 2
+            let hasOnlyTwoForeignKeys =
+                properties
+                |> Seq.choose (fun property ->
+                    match property with
+                    | ForeignKey(p) -> Some p
+                    | _ -> None)
+                |> Seq.length = 2
+            let hasNoOtherPropertiesOtherThanIndexAndPrimaryKey = 
+                properties
+                |> Seq.filter (fun property ->
+                    match property with
+                    | Property.Primitive(p) -> p.PropName.ToString() <> "Index"
+                    | _ -> false)
+                |> Seq.isEmpty
+
+            let isJoinTable : bool = hasOnlyTwoNavigationProperties && hasOnlyTwoForeignKeys && hasNoOtherPropertiesOtherThanIndexAndPrimaryKey
             
-                if isJoinTable then
-                    let primaryKey = properties |> Seq.choose (fun property -> match property with | PrimaryKey(p) -> Some p | _ -> None) |> Seq.tryHead
-                    let foreignKeys = properties |> Seq.choose (fun property -> match property with | ForeignKey(p) -> Some p | _ -> None) |> Seq.toList
-                    let navigationProperties = properties |> Seq.choose (fun property -> match property with | Navigation(p) -> Some p | _ -> None) |> Seq.toList
+            if isJoinTable then
+                let primaryKey = properties |> Seq.choose (fun property -> match property with | PrimaryKey(p) -> Some p | _ -> None) |> Seq.tryHead
+                let foreignKeys = properties |> Seq.choose (fun property -> match property with | ForeignKey(p) -> Some p | _ -> None) |> Seq.toList
+                let navigationProperties = properties |> Seq.choose (fun property -> match property with | Navigation(p) -> Some p | _ -> None) |> Seq.toList
 
-                    Join {
-                        Name = tableName;
-                        PrimaryKey = primaryKey;
-                        ForeignKeys = foreignKeys;
-                        NavigationProperties = navigationProperties;
-                    }
+                Join {
+                    Name = tableName;
+                    PrimaryKey = primaryKey;
+                    ForeignKeys = foreignKeys;
+                    NavigationProperties = navigationProperties;
+                }
+            else
+                let primaryKey = properties |> Seq.choose (fun property -> match property with | Property.PrimaryKey(p) -> Some p | _ -> None) |> Seq.tryHead
+                let foreignKeys = properties |> Seq.choose (fun property -> match property with | Property.ForeignKey(p) -> Some p | _ -> None) |> Seq.toList
+                let navigationProperties = properties |> Seq.choose (fun property -> match property with | Property.Navigation(p) -> Some p | _ -> None) |> Seq.toList
+                let primitiveProperties = properties |> Seq.choose (fun property -> match property with | Property.Primitive(p) -> Some p | _ -> None) |> Seq.toList
+
+                if primaryKey.IsNone then
+                    failwith $"Regular table '{tableName}' does not have a primary key"
                 else
-                    let primaryKey = properties |> Seq.choose (fun property -> match property with | PrimaryKey(p) -> Some p | _ -> None) |> Seq.tryHead
-                    let foreignKeys = properties |> Seq.choose (fun property -> match property with | ForeignKey(p) -> Some p | _ -> None) |> Seq.toList
-                    let navigationProperties = properties |> Seq.choose (fun property -> match property with | Navigation(p) -> Some p | _ -> None) |> Seq.toList
-                    let primitiveProperties = properties |> Seq.choose (fun property -> match property with | Primitive(p) -> Some p | _ -> None) |> Seq.toList
-
-                    if primaryKey.IsNone then
-                        failwith $"Regular table '{tableName}' does not have a primary key"
-                    else
                     
-                    Regular {
-                        Name = tableName;
-                        PrimaryKey = primaryKey.Value;
-                        ForeignKeys = foreignKeys;
-                        NavigationProperties = navigationProperties;
-                        PrimitiveProperties = primitiveProperties;
-                    }
+                Regular {
+                    Name = tableName;
+                    PrimaryKey = primaryKey.Value;
+                    ForeignKeys = foreignKeys;
+                    NavigationProperties = navigationProperties;
+                    PrimitiveProperties = primitiveProperties;
+                }
