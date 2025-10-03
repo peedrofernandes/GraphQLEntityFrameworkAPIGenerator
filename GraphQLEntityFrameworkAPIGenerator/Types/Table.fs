@@ -126,15 +126,6 @@ type Property =
     | PrimaryKey of PrimaryKeyProperty
     | ForeignKey of ForeignKeyProperty
     | Navigation of NavigationProperty
-//with
-//    member this.Name =
-//        match this with
-//        | Primitive(p) -> p.PropName
-//        | PrimaryKey(pk) -> match pk with
-//            | Single(s) -> s.PropName
-//            | Composite(c) -> c.PropName
-//        | ForeignKey(fk) -> fk.PropName
-//        | Navigation(n) -> n.Name
 
 type RegularTable = {
     Name: TableName

@@ -57,6 +57,7 @@ type RelationParser() =
                         IsNullable = p.IsNullable;
                     } |> List.singleton
                 | _ -> [])
+            |> List.distinctBy (fun field -> field.PropName)
 
         let relations: Relation list =
             table.Properties

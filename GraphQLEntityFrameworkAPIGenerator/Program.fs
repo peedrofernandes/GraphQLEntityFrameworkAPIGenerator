@@ -25,43 +25,60 @@ let processEntityFiles (category: Category) (sourcePath: string) (destinationPat
 
 
         let ignoredFiles : string list = 
-            let cookingIgnoredFiles : string list = [
-                "GESE_CookingContext"
-                "CodeBuilder"
-                "CodeBuilderContainer"
-                "CodeBuilderContainersElement"
-                "CodeBuildersCodeBuilderContainer"
-                "MultiDriverPilotType"
-                "MultiSequencePilotType"
-                "MultiInputReadType"
-                "PrmPilotMultiSequence"
-                "PilotMultiSequenceConfig"
-                "PilotMultiSequenceConfigDetail"
-                "PilotMultiSequenceDetail"
-                "PilotMultiSequenceDetailsStep"
-                "PilotMultiSequenceStep"
-            ]
-            let refrigerationIgnoredFiles : string list = [
-                "GESE_RefrigerationContext"
-                "FaultSubCode"
-                "FaultCode"
-                "FaultPrioritiesDetail"
-                "FaultPrioritiesConfigurations_FaultPrioritiesDetail"
-                "FaultPrioritiesConfiguration"
-            ]
-            let dryerIgnoredFiles : string list = [
-                "GESE_DryerContext"
-                "AdditionalRelationshipStatement"
-                "CategoryAdditionalRelationshipXMLConfiguration"
-                "PlatformAdditionalRelationshipsXMLConfiguration"
-            ]
-            match category with
-                | Cooking -> cookingIgnoredFiles
-                | Refrigeration -> refrigerationIgnoredFiles
-                | Dryer -> dryerIgnoredFiles
-                | _ -> []
+            let allIgnoredFiles : string list = []
 
-        let ignoredProperties : Map<TableName, string list> = Map []
+            let categorySpecificIgnoredFiles : string list =
+                let cookingIgnoredFiles : string list = [
+                    "GESE_CookingContext"
+                    "CodeBuilder"
+                    "CodeBuilderContainer"
+                    "CodeBuilderContainersElement"
+                    "CodeBuildersCodeBuilderContainer"
+                    "MultiDriverPilotType"
+                    "MultiSequencePilotType"
+                    "MultiInputReadType"
+                    "PrmPilotMultiSequence"
+                    "PilotMultiSequenceConfig"
+                    "PilotMultiSequenceConfigDetail"
+                    "PilotMultiSequenceDetail"
+                    "PilotMultiSequenceDetailsStep"
+                    "PilotMultiSequenceStep"
+                ]
+                let refrigerationIgnoredFiles : string list = [
+                    "GESE_RefrigerationContext"
+                    "FaultSubCode"
+                    "FaultCode"
+                    "FaultPrioritiesDetail"
+                    "FaultPrioritiesConfigurations_FaultPrioritiesDetail"
+                    "FaultPrioritiesConfiguration"
+                ]
+                let dryerIgnoredFiles : string list = [
+                    "GESE_DryerContext"
+                    "AdditionalRelationshipStatement"
+                    "CategoryAdditionalRelationshipXMLConfiguration"
+                    "PlatformAdditionalRelationshipsXMLConfiguration"
+                ]
+
+                match category with
+                    | Cooking -> cookingIgnoredFiles
+                    | Refrigeration -> refrigerationIgnoredFiles
+                    | Dryer -> dryerIgnoredFiles
+                    | _ -> []
+
+            allIgnoredFiles @ categorySpecificIgnoredFiles
+
+        let ignoredProperties : Map<TableName, string list> =
+            let allIgnoredProperties : (TableName * string list) list = [
+                TableName "Display", [ "HMIExpansionBoardConfigurations"; "HMIExpansionBoardConfigurationsId" ] // Ignored because there's a join table HMIExpansionBoardConfigurations_Display that results in a mapping of the same name.
+                TableName "HMIExpansionBoardConfiguration", [ "Displays" ] // Inverse of the above
+                TableName "ACUExpansionBoardConfiguration", [ "Boards" ] // Ignored because there's a join table ACUExpansionBoardConfigurations_Board that results in a mapping of the same name.
+                TableName "Board", [ "ACUExpansionBoardConfiguration" ] // Inverse of the above
+            ]
+
+            let categorySpecificIgnoredProperties : (TableName * string list) list = []
+
+            Map (allIgnoredProperties @ categorySpecificIgnoredProperties)
+
             //Map [
             //    TableName "Modifier", [ "ModifierType51"; "ModifierType61" ]
             //    TableName "ModifierType", [ "ModifierModifierType51s"; "ModifierModifierType61s" ]

@@ -108,10 +108,17 @@ type TableParser() =
 
                         let isForeignKey =
                             matches
-                            |> Seq.exists (fun m -> 
-                                let containsForeignKeyAttribute = m.Groups.[1].Value.Trim().ToString().Contains($"[ForeignKey(\"{propName}\")]")
+                            |> Seq.exists (fun m ->
+                                let foreignKeyAttributeMatch = Regex.Match(m.Groups.[1].Value.Trim().ToString(), $@"\[ForeignKey\(""(.*?)""\)\]")
+                                let foreignKeyInnerValue = foreignKeyAttributeMatch.Groups.[1].Value.Trim().ToString()
+                                let containsForeignKeyAttributeWithCorrespondingValue = 
+                                    if foreignKeyInnerValue.Contains(",") then 
+                                        foreignKeyInnerValue.Split(", ")
+                                        |> Seq.exists (fun ls -> ls = columnName)
+                                    else
+                                        foreignKeyInnerValue = columnName
                                 let containsICollection = m.Groups.[4].Value.Trim().ToString().Contains("ICollection")
-                                containsForeignKeyAttribute && not containsICollection)
+                                containsForeignKeyAttributeWithCorrespondingValue && not containsICollection)
 
                         let isNavigationProperty = hasVirtualKeyword && not isPrimaryKey && not isForeignKey
                         let isPrimitiveProperty = not hasVirtualKeyword && not isPrimaryKey && not isForeignKey
@@ -121,9 +128,9 @@ type TableParser() =
                             |> fun m -> m.Groups.[1].Value.ToString()
 
                         let correspondingForeignKeyNames : string list = // Get from [ForeignKey("[f1]", "[f2]", "...")]
-                            let foreignKeyAttributeInsideParenthesis = Regex.Match(attributesStr, @"\[ForeignKey\((.*)\)\]").Groups.[1].Value.ToString()
+                            let foreignKeyAttributeInsideParenthesis = Regex.Match(attributesStr, @"\[ForeignKey\(""(.*)""\)\]").Groups.[1].Value.ToString()
                             let foreignKeyAttributeInternalValues = 
-                                Regex.Matches(foreignKeyAttributeInsideParenthesis, @"""""?(\w+)["",]?""")
+                                Regex.Matches(foreignKeyAttributeInsideParenthesis, "\"?(\w+)[\",]?")
                                 |> Seq.map (fun x -> x.Groups.[1].Value)
                                 |> List.ofSeq
                             foreignKeyAttributeInternalValues
@@ -148,8 +155,10 @@ type TableParser() =
 
                 let matches = Regex.Matches(content, pattern);
 
-                let extractedData = extractDataFromMatches matches
-                
+                let extractedData = 
+                    extractDataFromMatches matches
+                    |> List.filter (fun m -> (not (ignoredProperties.ContainsKey(tableName)) || (not (ignoredProperties[tableName] |> List.exists (fun n -> n = m.PropName.ToString() || n = m.ColumnName.ToString())))))
+
                 let primaryKeys : SinglePrimaryKeyProperty list =
                     extractedData
                     |> List.filter (fun m -> m.IsPrimaryKey)
@@ -190,8 +199,8 @@ type TableParser() =
                                     match finalGroupedPrimaryKey with
                                     | Some pk ->
                                         match pk with
-                                        | PrimaryKeyProperty.Composite c -> failwith $"The {m.PropName} navigation property on table '{tableName}' has no [ForeignKey] attribute. The default behavior on this case is to assign the primary key itself as the foreign key, but it seems like the primary key of this table is composite (this case is unhandled)."
                                         | PrimaryKeyProperty.Single s -> ForeignKeyProperty.Single { Type = s.Type; PropName = s.PropName; ColumnName = s.ColumnName; IsNullable = false }
+                                        | PrimaryKeyProperty.Composite c -> failwith $"The {m.PropName} navigation property on table '{tableName}' has no [ForeignKey] attribute. The default behavior on this case is to assign the primary key itself as the foreign key, but it seems like the primary key of this table is composite (this case is unhandled)."
                                     | _ -> failwith $"The {m.PropName} navigation property on table '{tableName}' has no [ForeignKey] attribute. The default behavior on this case is to assign the primary key itself as the foreign key, but it seems like the primary key of this table is composite (this case is unhandled)."
 
                                 fk
@@ -287,8 +296,8 @@ type TableParser() =
                     | _ -> false)
                 |> Seq.isEmpty
 
-            let isJoinTable : bool = hasOnlyTwoNavigationProperties && hasOnlyTwoForeignKeys && hasNoOtherPropertiesOtherThanIndexAndPrimaryKey
-            
+            let isJoinTable : bool = tableName.ToString().Contains("_") || (hasOnlyTwoNavigationProperties && hasOnlyTwoForeignKeys && hasNoOtherPropertiesOtherThanIndexAndPrimaryKey)
+
             if isJoinTable then
                 let primaryKey = properties |> Seq.choose (fun property -> match property with | PrimaryKey(p) -> Some p | _ -> None) |> Seq.tryHead
                 let foreignKeys = properties |> Seq.choose (fun property -> match property with | ForeignKey(p) -> Some p | _ -> None) |> Seq.toList
