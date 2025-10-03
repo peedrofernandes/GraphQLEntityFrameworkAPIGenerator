@@ -4,9 +4,6 @@ open GraphQLEntityFrameworkAPIGenerator.Interfaces
 open GraphQLEntityFrameworkAPIGenerator.Types
 
 type RelationParser() =
-    //let (|IsRegularTable|_|) : Table -> RegularTable option = function | Regular(r) -> Some r | _ -> None
-    //let isRegularTable table = match table with | Regular(_) -> true | _ -> false
-
     member private this.ParseRegularTable(tables: Map<TableName, Table>, table: RegularTable) : Entity =
         let fields: Field list =
             table.Properties
@@ -103,7 +100,6 @@ type RelationParser() =
                 | Regular(otherTable), Collection(thisNavProp), Single(thatNavProp) ->
                     OneToMany {
                         Name = RelationName (thisNavProp.PropName.ToString());
-                        // KeyType = otherTable.PrimaryKey.Type;
                         NavProp = thisNavProp;
                         BackwardsNavProp = thatNavProp;
                         SourceTable = table;
@@ -126,7 +122,6 @@ type RelationParser() =
                             | Some (Regular(destination)) ->
                                 ManyToManyWithJoinTable {
                                     Name = RelationName (nav.PropName.ToString());
-                                    // KeyType = destination.PrimaryKey.Type;
                                     NavProp = thisNavProp;
                                     JoinTableNavProp = nav;
                                     JoinTableBackwardsNavProp = thatNavProp;
@@ -139,10 +134,8 @@ type RelationParser() =
                             | _ -> failwith $"Destination table '{nav.Type}', for origin table '{table.Name}' and origin destination '{thisNavProp.PropName}' is not a regular table (debug: 2)")
                     relations
                 | Regular(regularTable), Collection(thisNavProp), Collection(thatNavProp) ->
-                    // Many to many relation without join table (collection both sides)
                     ManyToMany {
                         Name = RelationName (thisNavProp.PropName.ToString());
-                        // KeyType = regularTable.PrimaryKey.Type;
                         NavProp = thisNavProp;
                         BackwardsNavProp = thatNavProp;
                         Destination = EntityName (thisNavProp.PropName.ToString());

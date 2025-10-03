@@ -1,5 +1,7 @@
 namespace GraphQLEntityFrameworkAPIGenerator.Types
 
+// These are the Table types. They represent the actual tables in the database and nothing more (only the information that is present in the EF model).
+
 type PluralizedTableName = PluralizedTableName of string
 with
     override this.ToString() : string =

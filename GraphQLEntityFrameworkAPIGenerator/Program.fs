@@ -78,18 +78,6 @@ let processEntityFiles (category: Category) (sourcePath: string) (destinationPat
             let categorySpecificIgnoredProperties : (TableName * string list) list = []
 
             Map (allIgnoredProperties @ categorySpecificIgnoredProperties)
-
-            //Map [
-            //    TableName "Modifier", [ "ModifierType51"; "ModifierType61" ]
-            //    TableName "ModifierType", [ "ModifierModifierType51s"; "ModifierModifierType61s" ]
-            //    TableName "PilotType", [ "MultiDriverPilotType"; "MultiSequencePilotType" ]
-            //    TableName "ReadType", [ "MultiInputReadType" ]
-            //    TableName "PrmPilotMultiSequence", [ "MultiSequencePilotType" ]
-            //    TableName "ACUExpansionBoardConfiguration", [ "Boards" ]
-            //    TableName "Board", [ "ACUExpansionBoardConfiguration" ]
-            //    TableName "HMIExpansionBoardConfiguration", [ "Displays" ]
-            //    TableName "Display", [ "HMIExpansionBoardConfigurations" ]
-            //]
         
         // Get all .cs files from source directory
         let efModelFiles = 

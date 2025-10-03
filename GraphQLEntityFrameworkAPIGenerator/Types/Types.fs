@@ -1,5 +1,7 @@
 namespace GraphQLEntityFrameworkAPIGenerator.Types
 
+// These are the types and utilities that are used throughout the project.
+
 module StringUtils =
     let pluralize (name: string) : string =
         // Check if already pluralized

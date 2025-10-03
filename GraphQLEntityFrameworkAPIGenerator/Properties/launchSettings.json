@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "GraphQLEntityFrameworkAPIGenerator": {
+    "Run": {
       "commandName": "Project",
       "environmentVariables": {
         "CATEGORY": "dryer",

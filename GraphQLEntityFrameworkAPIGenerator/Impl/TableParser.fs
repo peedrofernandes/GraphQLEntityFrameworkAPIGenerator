@@ -36,11 +36,6 @@ type TableParser() =
             
             let isKeyless = isKeylessEntity fileContent
 
-            //let hasMultipleKeyAttributes = 
-            //    System.Text.RegularExpressions.Regex.Matches(fileContent, @"\[Key\]")
-            //    |> Seq.length
-            //    |> (<) 1
-
             let mapPrimitiveType (typeStr: string) : PrimitiveType =
                 match typeStr.ToLower() with
                 | "int" -> PrimitiveType.Int
@@ -264,15 +259,6 @@ type TableParser() =
                         | _ -> None)
                 View { Name = tableName; PrimitiveProperties = primitiveProps }
             else
-
-            let hasPrimaryKey =
-                properties
-                |> Seq.choose (fun property ->
-                    match property with
-                    | PrimaryKey(p) -> Some p
-                    | _ -> None)
-                |> Seq.isEmpty
-                |> not
 
             let hasOnlyTwoNavigationProperties = 
                 properties
