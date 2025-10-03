@@ -66,18 +66,18 @@ type ContentGenerator(category : Category) =
             | SingleIdType.Short -> $$"""Field(t => t.{{propName}}, type: typeof(ShortGraphType), nullable: {{nullable}}).Name("{{name}}");"""
 
     member private _.MapRelation(entity: Entity, relation: Relation) : string =
-        let resolveInputFormat (pk: PrimaryKeyProperty) : string =
+        let resolveInputFormatWithPrimaryKey (pk: PrimaryKeyProperty) : string =
             match pk with
             | PrimaryKeyProperty.Single s -> $"var {s.PropName.Pluralize()} = input;"
             | PrimaryKeyProperty.Composite c ->
                 let mappedVarTuple = 
                     c.Keys 
-                    |> List.map (fun x -> x.PropName.ToString())
+                    |> List.map (fun x -> x.PropName.Pluralize().ToString())
                     |> String.concat ", "
                     |> (fun finalStr -> $"({finalStr})")
                 let mappedSeedTuple =
                     c.Keys 
-                    |> List.map (fun x -> $"new List<{x.Type}>({x.PropName})")
+                    |> List.map (fun x -> $"new List<{x.Type}>()")
                     |> String.concat ", "
                     |> (fun finalStr -> $"({finalStr})")
                 let mappedAdditions =
@@ -86,14 +86,44 @@ type ContentGenerator(category : Category) =
                     |> String.concat "\n\t\t\t\t\t\t\t\t\t\t"
 
                 $$"""
-                            var {{mappedVarTuple}} = input.Aggregate(
+                            var {{mappedVarTuple}} = inputs.Aggregate(
                                 seed: {{mappedSeedTuple}},
                                 fn: (acc, cur) =>
                                 {
                                     {{mappedAdditions}}
                                     return acc;
                                 }
-                            )
+                            );
+                """
+
+        let resolveInputFormatWithForeignKey (fk: ForeignKeyProperty) : string =
+            match fk with
+            | ForeignKeyProperty.Single s -> $"var {s.PropName.Pluralize()} = input;"
+            | ForeignKeyProperty.Composite c ->
+                let mappedVarTuple = 
+                    c.Keys 
+                    |> List.map (fun x -> x.PropName.Pluralize().ToString())
+                    |> String.concat ", "
+                    |> (fun finalStr -> $"({finalStr})")
+                let mappedSeedTuple =
+                    c.Keys 
+                    |> List.map (fun x -> $"new List<{x.Type}>()")
+                    |> String.concat ", "
+                    |> (fun finalStr -> $"({finalStr})")
+                let mappedAdditions =
+                    c.Keys
+                    |> List.mapi (fun i _ -> $"acc.Item{i}.Add(cur.Item{i});")
+                    |> String.concat "\n\t\t\t\t\t\t\t\t\t\t"
+
+                $$"""
+                            var {{mappedVarTuple}} = inputs.Aggregate(
+                                seed: {{mappedSeedTuple}},
+                                fn: (acc, cur) =>
+                                {
+                                    {{mappedAdditions}}
+                                    return acc;
+                                }
+                            );
                 """
 
         // PRIMARY KEY RESOLVERS
@@ -129,6 +159,7 @@ type ContentGenerator(category : Category) =
                 pk.Keys
                 |> List.map (fun fk -> $"({resolveWhereExprWithSinglePrimaryKey fk})")
                 |> String.concat " || "
+                |> fun finalStr -> $"x => {finalStr}"
 
         let resolveKeyMappingWithPrimaryKey (pk: PrimaryKeyProperty) : string =
             let resolveKeyMappingWithSinglePrimaryKey (pk: SinglePrimaryKeyProperty) =
@@ -137,9 +168,12 @@ type ContentGenerator(category : Category) =
             | PrimaryKeyProperty.Single pk -> resolveKeyMappingWithSinglePrimaryKey pk
             | PrimaryKeyProperty.Composite pk ->
                 pk.Keys
-                |> List.map (fun fk -> resolveKeyMappingWithSinglePrimaryKey fk)
-                |> String.concat ", "
-                |> fun finalStr -> $"({finalStr})"
+                |> List.map (fun pk -> $"{pk.PropName} = {resolveKeyMappingWithSinglePrimaryKey pk},")
+                |> String.concat "\n\t\t\t\t\t\t\t\t\t\t"
+                |> fun finalStr -> $$"""new
+                                    {
+                                        {{finalStr}}
+                                    }"""
 
         // FOREIGN KEY RESOLVERS
 
@@ -152,17 +186,21 @@ type ContentGenerator(category : Category) =
                 fk.Keys
                 |> List.map (fun fk -> $"({resolveWhereExprWithSingleForeignKey fk})")
                 |> String.concat " || "
+                |> fun finalStr -> $"x => {finalStr}"
 
         let resolveKeyMappingWithForeignKey (fk: ForeignKeyProperty) : string =
             let resolveKeyMappingWithSingleForeignKey (fk: SingleForeignKeyProperty) =
                 $"({fk.Type})x.{fk.PropName}!"
             match fk with
-            | ForeignKeyProperty.Single fk -> resolveKeyMappingWithSingleForeignKey fk
+            | ForeignKeyProperty.Single fk -> $"x => {resolveKeyMappingWithSingleForeignKey fk}"
             | ForeignKeyProperty.Composite fk ->
                 fk.Keys
-                |> List.map (fun fk -> resolveKeyMappingWithSingleForeignKey fk)
-                |> String.concat ", "
-                |> fun finalStr -> $"({finalStr})"
+                |> List.map (fun fk -> $"{fk.PropName} = {resolveKeyMappingWithSingleForeignKey fk},")
+                |> String.concat "\n\t\t\t\t\t\t\t\t\t\t"
+                |> fun finalStr -> $$"""new 
+                                    {
+                                        {{finalStr}}
+                                    }"""
 
         match relation with
         | OneToOne(r) ->
@@ -172,8 +210,10 @@ type ContentGenerator(category : Category) =
                 {
                     var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{resolveKeyType r.SourceTable.PrimaryKey}}, {{resolveTableName r.TargetTable.Name}}>(
                         "{{r.NavProp.ColumnName}} by {{r.SourceTable.Name}} DataLoader",
-                        async ids => 
+                        async inputs => 
                         {
+                            {{resolveInputFormatWithForeignKey r.BackwardsNavProp.ForeignKey}}
+
                             var data = await dbContext.{{r.TargetTable.Name.Pluralize()}}
                                 .Where({{resolveWhereExprWithForeignKey r.BackwardsNavProp.ForeignKey}})
                                 .Select(x => new
@@ -195,8 +235,10 @@ type ContentGenerator(category : Category) =
                 {
                     var loader = dataLoaderAccessor.Context.GetOrAddBatchLoader<{{r.SourceTable.PrimaryKey.Type}}, {{resolveTableName r.TargetTable.Name}}>(
                         "{{r.NavProp.ColumnName}} by {{r.SourceTable.Name}} DataLoader",
-                        async ids => 
+                        async inputs => 
                         {
+                            {{resolveInputFormatWithPrimaryKey r.SourceTable.PrimaryKey}}
+
                             var data = await dbContext.{{r.SourceTable.Name.Pluralize()}}
                                 .Where({{resolveWhereExprWithPrimaryKey r.SourceTable.PrimaryKey}})
                                 .Select(x => new 
@@ -218,8 +260,10 @@ type ContentGenerator(category : Category) =
                 {
                     var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{resolveKeyType r.SourceTable.PrimaryKey}}, {{resolveTableName r.TargetTable.Name}}>(
                         "{{r.NavProp.ColumnName}} by {{r.SourceTable.Name}} DataLoader",
-                        async ids => 
+                        async inputs => 
                         {
+                            {{resolveInputFormatWithForeignKey r.BackwardsNavProp.ForeignKey}}
+
                             var data = await dbContext.{{r.TargetTable.Name.Pluralize()}}
                                 .Where({{resolveWhereExprWithForeignKey r.BackwardsNavProp.ForeignKey}})
                                 .Select(x => new
@@ -241,8 +285,10 @@ type ContentGenerator(category : Category) =
                 {
                     var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.SourceTable.PrimaryKey.Type}}, {{resolveTableName r.TargetTable.Name}}>(
                         "{{r.JoinTableNavProp.ColumnName.Pluralize()}} by {{r.SourceTable.Name}} DataLoader",
-                        async ids => 
+                        async inputs => 
                         {
+                            {{resolveInputFormatWithForeignKey r.JoinTableBackwardsNavProp.ForeignKey}}
+                            
                             var data = await dbContext.{{r.JoinTable.Name.Pluralize()}}
                                 .Where({{resolveWhereExprWithForeignKey r.JoinTableBackwardsNavProp.ForeignKey}})
                                 .Select(x => new
@@ -264,8 +310,10 @@ type ContentGenerator(category : Category) =
                 {
                     var loader = dataLoaderAccessor.Context.GetOrAddCollectionBatchLoader<{{r.SourceTable.PrimaryKey.Type}}, {{resolveTableName r.TargetTable.Name}}>(
                         "{{r.NavProp.ColumnName}} by {{r.SourceTable.Name}} DataLoader",
-                        async ids => 
+                        async inputs => 
                         {
+                            {{resolveInputFormatWithPrimaryKey r.SourceTable.PrimaryKey}}
+
                             var data = await dbContext.{{r.SourceTable.Name.Pluralize()}}
                                 .Where({{resolveWhereExprWithPrimaryKey r.SourceTable.PrimaryKey}})
                                 .Select(x => new
